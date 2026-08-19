@@ -5,12 +5,12 @@
 核心定位：
 
 ```text
-Agent investigates. Policy decides. Gates authorize. Executor acts. LLM only explains.
+Agent 负责调查，Policy 负责决策，Gate 负责授权，Executor 负责执行，LLM 只负责解释。
 ```
 
-也就是说，本项目的 Agent 负责按订单类型收集规则所需事实并编排执行；资金能否放行由 `PolicyEngine`、幂等门和 `ActionExecutor` 共同决定。LLM 只生成 `explanation` 文本，不能修改 `Decision`、`ReasonCode`、升级团队、重试语义或资金动作。
+也就是说，本项目中的 Agent 负责按订单类型收集规则所需事实并编排执行；资金是否放行由 `PolicyEngine`、幂等门和 `ActionExecutor` 共同决定。LLM 只生成 `explanation` 文本，不能修改 `Decision`、`ReasonCode`、升级团队、重试语义或资金动作。
 
-## 工程架构图
+## 工程架构
 
 ```text
 ┌──────────────────────────┐
@@ -27,14 +27,14 @@ Agent investigates. Policy decides. Gates authorize. Executor acts. LLM only exp
 │                         PolicyBatchRunner                    │
 │  ┌──────────────────┐   ┌─────────────────────────────────┐  │
 │  │    DemoFacts     │   │         ExplanationProvider     │  │
-│  │ customers/assets │   │  stub / recorded / openai       │  │
-│  │ address/rates    │   │  only explains, never decides   │  │
+│  │ 客户 / 资产 /    │   │  stub / recorded / openai       │  │
+│  │ 地址风险 / 汇率  │   │  只解释，不参与决策             │  │
 │  └─────────┬────────┘   └─────────────────────────────────┘  │
 │            │                         ▲                       │
 │            v                         │                       │
 │    ┌──────────────────┐              │                       │
 │    │   PolicyEngine   │              │                       │
-│    │ rules + evidence │              │                       │
+│    │  规则 + 证据     │              │                       │
 │    └─────────┬────────┘              │                       │
 │              │                       │                       │
 │              v                       │                       │
@@ -52,61 +52,60 @@ Agent investigates. Policy decides. Gates authorize. Executor acts. LLM only exp
 └──────────────────────────────────────────────────────────────┘
 ```
 
-读图方式：
+如何阅读：
 
 - `PolicyEngine` 只输出确定性决策。
-- 幂等门决定能不能重复处理。
+- 幂等门决定同一订单或交易能否重复处理。
 - `ActionExecutor` 只在 `COMPLETE` 且幂等通过时执行动作。
 - `ExplanationProvider` 只补充解释，不参与授权。
 
-## 状态机转移图
+## 状态流转
 
 ```text
                  ┌──────────────┐
-                 │   INPUT      │
+                 │   输入订单   │
                  └──────┬───────┘
                         │
                         v
                  ┌──────────────┐
-                 │   EVALUATE   │
+                 │   规则评估   │
                  └──────┬───────┘
                         │
       ┌─────────────────┼─────────────────┬─────────────────┬─────────────────┐
       │                 │                 │                 │                 │
       v                 v                 v                 v                 v
 ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-│  COMPLETE    │  │ TEMP_HOLD    │  │ REQUOTE      │  │ OPS_REVIEW   │  │  COMPLIANCE  │
-│              │  │              │  │              │  │              │  │    HOLD      │
+│  COMPLETE    │  │ TEMP_HOLD    │  │ REQUOTE      │  │ OPS_REVIEW   │  │ COMPLIANCE   │
+│              │  │              │  │              │  │              │  │ HOLD         │
 └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘
        │                 │                 │                 │                 │
        │                 │                 │                 │                 │
        v                 v                 v                 v                 v
 ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-│ Idempotency  │  │ No action    │  │ No action    │  │ No action    │  │ No action    │
-│   gates      │  │ + explain    │  │ + explain    │  │ + explain    │  │ + explain    │
+│ 幂等门       │  │ 不执行动作   │  │ 不执行动作   │  │ 不执行动作   │  │ 不执行动作   │
+│              │  │ + 解释       │  │ + 解释       │  │ + 解释       │  │ + 解释       │
 └──────┬───────┘  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘
        │
        v
 ┌──────────────┐
-│  ACTION      │
-│ EXECUTED?    │
+│ 是否执行动作 │
 └──────┬───────┘
        │
-   yes  v  no
+   是  v  否
   ┌───────────┐
-  │ payout /  │
-  │ release   │
+  │ 出款 /    │
+  │ 放行      │
   └───────────┘
 ```
 
 转移规则简表：
 
-- 命中制裁或冻结级风险，直接进入 `FREEZE`。
+- 命中制裁或高风险冻结规则，直接进入 `FREEZE`。
 - 命中合规阻断，进入 `COMPLIANCE_HOLD`。
-- 不支持、过期、缺事实或资金异常，分别进入对应人工/运维状态。
+- 不支持、过期、缺事实或资金异常，分别进入对应的人工或运维状态。
 - 只有 `COMPLETE` 才继续走幂等门和执行门。
 
-## LLM 边界图
+## LLM 边界
 
 ```text
 LLM_PROVIDER
@@ -121,13 +120,13 @@ ExplanationProviderFactory
    └── OPENAI    -> OpenAiExplanationProvider -> SafeExplanationProvider -> fallback stub
                                                 │
                                                 v
-                                     explanation text only
+                                      解释文本
                                                 │
                                                 v
                                       results.json / audit.jsonl
 ```
 
-这条链路的边界很硬：
+这条链路的边界很明确：
 
 - 解释器只能产出文本。
 - 文本不能改 `Decision`。
@@ -150,11 +149,27 @@ src/main/java/com/ramppolicy/engine/
 
 src/main/resources/demo-data/
 ├── policy.md                        # Demo 策略的唯一事实来源
-├── customers.json                   # 客户/KYC/银行名事实
+├── customers.json                   # 客户 / KYC / 银行名事实
 ├── assets.json                      # 资产网络配置与确认数
 ├── address_risk.json                # 地址风险事实
 ├── reference_rates.json             # 参考汇率
 └── orders.jsonl                     # 14 条样例订单
+
+src/test/java/com/ramppolicy/engine/eval/
+├── AgentEvaluationSuite.java        # 评测主入口
+├── AgentEvaluationTest.java         # 评测测试入口
+├── DecisionFingerprint.java         # 决策指纹
+├── EvaluationReport.java            # 评测汇总
+├── EvaluationReportWriter.java      # 报告落盘
+├── EvaluationScenario.java          # 评测场景
+├── EvaluationSupport.java           # 评测辅助方法
+├── FailingExplanationProvider.java  # 失败解释器
+├── MaliciousExplanationProvider.java # 恶意解释器
+└── RandomExplanationProvider.java   # 随机解释器
+
+target/evaluation/
+├── evaluation-report.json            # 机器可读评测结果
+└── evaluation-report.md              # 人类可读评测结果
 ```
 
 ## 构建与测试
@@ -166,7 +181,7 @@ mvn clean test
 mvn package
 ```
 
-Windows PowerShell:
+Windows PowerShell：
 
 ```powershell
 mvn clean test
@@ -179,7 +194,7 @@ mvn package
 java -jar target/ramp-policy-engine-0.1.0-SNAPSHOT.jar
 ```
 
-Windows PowerShell:
+Windows PowerShell：
 
 ```powershell
 java -jar target\ramp-policy-engine-0.1.0-SNAPSHOT.jar
@@ -192,7 +207,7 @@ output/results.json
 output/audit.jsonl
 ```
 
-## 输出说明
+## 结果说明
 
 `output/results.json` 是每单最终结果，主要字段包括：
 
@@ -212,7 +227,7 @@ output/audit.jsonl
 
 `output/audit.jsonl` 是逐行审计轨迹。审计里的 `decision`、`reasons` 和资金动作字段来自确定性策略和执行门，不来自 LLM。
 
-## LLM Provider
+## LLM 解释器
 
 默认解释器是 `stub`：
 
@@ -232,7 +247,7 @@ LLM_PROVIDER=stub java -jar target/ramp-policy-engine-0.1.0-SNAPSHOT.jar
 LLM_PROVIDER=recorded java -jar target/ramp-policy-engine-0.1.0-SNAPSHOT.jar
 ```
 
-PowerShell:
+PowerShell：
 
 ```powershell
 $env:LLM_PROVIDER="stub"
@@ -251,7 +266,7 @@ OPENAI_MODEL=gpt-5-mini \
 java -jar target/ramp-policy-engine-0.1.0-SNAPSHOT.jar
 ```
 
-PowerShell:
+PowerShell：
 
 ```powershell
 $env:LLM_PROVIDER="openai"
@@ -260,30 +275,30 @@ $env:OPENAI_MODEL="gpt-5-mini"
 java -jar target\ramp-policy-engine-0.1.0-SNAPSHOT.jar
 ```
 
-当前 Demo 的 `OpenAiExplanationProvider` 是隔离边界：只有 `LLM_PROVIDER=openai` 且提供 `OPENAI_API_KEY` 时才会构造；离线 Demo 不包含真实网络调用，运行时失败会回退到 `stub`，且不会改变任何资金决策。
+当前 Demo 中的 `OpenAiExplanationProvider` 只承担隔离真实模型调用的职责：只有 `LLM_PROVIDER=openai` 且提供 `OPENAI_API_KEY` 时才会构造；离线模式不包含真实网络调用，运行时失败会回退到 `stub`，而且不会改变任何资金决策。
 
 ### 配置项
 
 | 环境变量 | 默认值 | 说明 |
 | --- | --- | --- |
 | `LLM_PROVIDER` | `stub` | 可选 `stub`、`recorded`、`openai` |
-| `OPENAI_API_KEY` | 无 | 仅 `LLM_PROVIDER=openai` 时要求 |
+| `OPENAI_API_KEY` | 无 | 仅 `LLM_PROVIDER=openai` 时需要 |
 | `OPENAI_MODEL` | `gpt-5-mini` | 仅 OpenAI 模式使用 |
-| `LLM_RECORDED_FILE` | `classpath:recorded-explanations.json` | 录制回放来源，当前 Demo 使用内置录制映射 |
-| `LLM_TIMEOUT_MS` | `3000` | 解释器超时边界配置 |
-| `LLM_MAX_INPUT_CHARS` | `8000` | 解释输入上限配置 |
-| `LLM_MAX_OUTPUT_CHARS` | `2000` | 解释输出上限配置 |
+| `LLM_RECORDED_FILE` | `classpath:recorded-explanations.json` | 录制回放来源，当前 Demo 使用内置映射 |
+| `LLM_TIMEOUT_MS` | `3000` | 解释器超时边界 |
+| `LLM_MAX_INPUT_CHARS` | `8000` | 解释输入上限 |
+| `LLM_MAX_OUTPUT_CHARS` | `2000` | 解释输出上限 |
 
-## 为什么没有使用 LangChain4j
+## 为什么未采用 LangChain4j
 
-本项目没有引入 LangChain4j 是一个有意的架构取舍，而不是遗漏：
+本项目没有引入 LangChain4j，是有意的架构取舍，不是遗漏：
 
-- 题目要求的是“模型可替换、无付费 Key 可离线运行、LLM 放在自有接口后面”，当前 `ExplanationProvider` 已满足这个边界。
+- 题目要求的是“模型可替换、无需付费 Key 也能离线运行、LLM 放在自有接口后面”，当前 `ExplanationProvider` 已经满足这个边界。
 - Demo 是 Maven + Java 21 的轻量确定性策略引擎，引入 LangChain4j 会增加依赖、配置和测试面，但不会提升资金主链的正确性。
 - LLM 在这里没有工具规划、记忆、链式调用或资金授权职责，只是把 `DeterministicDecision` 转成解释文本。
 - 如果未来接入真实模型，可以在 `infrastructure/llm/OpenAiExplanationProvider` 内部选择 LangChain4j、OpenAI SDK 或其他 HTTP 客户端；业务层仍只依赖项目自有接口。
 
-## Golden 样例
+## Golden 回归用例
 
 内置 `orders.jsonl` 覆盖 14 个关键场景：
 
@@ -304,7 +319,7 @@ java -jar target\ramp-policy-engine-0.1.0-SNAPSHOT.jar
 | O-013 | `OPS_REVIEW` | 重复交易哈希 |
 | O-014 | `COMPLIANCE_HOLD` | mixer 地址；客户备注不作为放行依据 |
 
-## 评测与可靠性
+## 评测与可靠性说明
 
 原始 14 单只是回归基线，不是完整评测集。
 
@@ -327,7 +342,7 @@ LLM 不在资金授权路径中。
 
 > 模型可以非确定性，但资金流转不能非确定性。
 
-### 最近一次离线评测
+### 最近一次离线评测结果
 
 评测提交：`37dd5c7c23300c923d3fe240cd2ecf25e781c1c4`
 
@@ -397,12 +412,12 @@ target/evaluation/evaluation-report.md
 2. 在 `FactRequirement` 中补充规则需要的事实类别。
 3. 在 `PolicyEngine` 中实现确定性规则函数。
 4. 在 `ReasonCode` 和 `EscalationTarget` 中补充结构化输出。
-5. 为边界场景、Golden 样例和幂等/安全不变量补测试。
+5. 为边界场景、Golden 样例和幂等 / 安全不变量补测试。
 6. 更新 `DECISIONS.md`，说明策略留白如何被解释。
 
 新增真实 LLM 能力时，只能放在 `infrastructure/llm` 边界内，不能让 `policy`、`domain`、`idempotency` 或 `runtime/ActionExecutor` 依赖模型 SDK。
 
-## 排查
+## 常见排查
 
 常用命令：
 
