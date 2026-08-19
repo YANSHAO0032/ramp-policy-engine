@@ -1,7 +1,7 @@
 package com.ramppolicy.engine.plan;
 
 /**
- * Identifiers for deterministic policy rules.
+ * 确定性策略规则的唯一标识。
  */
 public enum RuleId {
     CUSTOMER_STATUS,

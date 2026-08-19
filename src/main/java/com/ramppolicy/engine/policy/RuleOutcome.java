@@ -1,7 +1,7 @@
 package com.ramppolicy.engine.policy;
 
 /**
- * Per-rule outcome in the deterministic engine.
+ * 单条策略规则在确定性引擎中的执行结果。
  */
 public enum RuleOutcome {
     PASS,

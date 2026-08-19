@@ -8,6 +8,11 @@ import com.ramppolicy.engine.domain.OrderType;
 import com.ramppolicy.engine.domain.ReasonCode;
 import com.ramppolicy.engine.domain.Retryability;
 import com.ramppolicy.engine.facts.DemoFacts;
+import com.ramppolicy.engine.infrastructure.llm.ExplanationProvider;
+import com.ramppolicy.engine.infrastructure.llm.ExplanationProviderFactory;
+import com.ramppolicy.engine.infrastructure.llm.ExplanationRequest;
+import com.ramppolicy.engine.infrastructure.llm.ExplanationResult;
+import com.ramppolicy.engine.infrastructure.llm.LlmProperties;
 import com.ramppolicy.engine.io.DemoDataLoader;
 import com.ramppolicy.engine.io.JsonlOrderReader;
 import com.ramppolicy.engine.policy.PolicyEngine;
@@ -27,7 +32,7 @@ import java.util.EnumSet;
 import java.util.List;
 
 /**
- * Thin batch orchestrator for the vendored demo orders.
+ * 仓库内置 Demo 订单的轻量批处理编排器。
  */
 public final class PolicyBatchRunner {
 
@@ -36,32 +41,47 @@ public final class PolicyBatchRunner {
     private final ObjectMapper objectMapper;
     private final Clock clock;
     private final PolicyEngine policyEngine;
+    private final ExplanationProvider explanationProvider;
     private final InMemoryOrderIdempotencyStore orderStore = new InMemoryOrderIdempotencyStore();
     private final InMemoryTransactionIdempotencyStore transactionStore = new InMemoryTransactionIdempotencyStore();
     private final ActionExecutor actionExecutor = new ActionExecutor();
 
     /**
-     * Creates a batch runner for the demo dataset.
+     * 使用默认环境变量配置的解释器创建 Demo 批处理运行器。
      *
-     * @param facts authoritative demo facts
-     * @param reader JSONL order reader
-     * @param objectMapper JSON serializer
-     * @param clock evaluation clock
+     * @param facts Demo 权威事实集合
+     * @param reader JSONL 订单解析器
+     * @param objectMapper JSON 序列化器
+     * @param clock 评估时钟
      */
     public PolicyBatchRunner(DemoFacts facts, JsonlOrderReader reader, ObjectMapper objectMapper, Clock clock) {
+        this(facts, reader, objectMapper, clock, new ExplanationProviderFactory(LlmProperties.from(System.getenv())).create());
+    }
+
+    /**
+     * 使用显式解释器创建 Demo 批处理运行器。
+     *
+     * @param facts Demo 权威事实集合
+     * @param reader JSONL 订单解析器
+     * @param objectMapper JSON 序列化器
+     * @param clock 评估时钟
+     * @param explanationProvider 解释器，仅用于生成非权威说明
+     */
+    public PolicyBatchRunner(DemoFacts facts, JsonlOrderReader reader, ObjectMapper objectMapper, Clock clock, ExplanationProvider explanationProvider) {
         this.facts = facts;
         this.reader = reader;
         this.objectMapper = objectMapper;
         this.clock = clock;
         this.policyEngine = new PolicyEngine(new StaticRulePlanResolver(), facts, clock);
+        this.explanationProvider = explanationProvider;
     }
 
     /**
-     * Runs the vendored demo orders from the classpath and writes outputs.
+     * 从 classpath 读取内置 Demo 订单并写出结果文件。
      *
-     * @param outputDir output directory
-     * @return batch result bundle
-     * @throws IOException when input or output fails
+     * @param outputDir 输出目录
+     * @return 批处理结果
+     * @throws IOException 输入或输出失败时抛出
      */
     public BatchRunResult runDemo(Path outputDir) throws IOException {
         DemoDataLoader loader = new DemoDataLoader(objectMapper);
@@ -70,12 +90,12 @@ public final class PolicyBatchRunner {
     }
 
     /**
-     * Runs a batch from a filesystem JSONL file and writes outputs.
+     * 从文件系统 JSONL 文件运行批处理并写出结果文件。
      *
-     * @param ordersPath JSONL file path
-     * @param outputDir output directory
-     * @return batch result bundle
-     * @throws IOException when input or output fails
+     * @param ordersPath JSONL 订单文件路径
+     * @param outputDir 输出目录
+     * @return 批处理结果
+     * @throws IOException 输入或输出失败时抛出
      */
     public BatchRunResult run(Path ordersPath, Path outputDir) throws IOException {
         List<OrderRecord> orders = reader.readAll(Files.readString(ordersPath, StandardCharsets.UTF_8));
@@ -119,6 +139,7 @@ public final class PolicyBatchRunner {
     }
 
     private OrderExecutionRecord record(OrderRecord order, DeterministicDecision decision, boolean actionExecuted, String actionType, List<String> auditLines) throws IOException {
+        ExplanationResult explanation = explanationProvider.explain(new ExplanationRequest(order.orderId(), decision));
         OrderExecutionRecord record = new OrderExecutionRecord(
                 order.orderId(),
                 decision.decision(),
@@ -127,8 +148,18 @@ public final class PolicyBatchRunner {
                 decision.retryability(),
                 actionExecuted,
                 actionType,
-                decision.evidence());
-        auditLines.add(objectMapper.writeValueAsString(new AuditEntry(order.orderId(), decision.decision().name(), decision.reasonCodes().stream().map(Enum::name).toList(), actionExecuted)));
+                decision.evidence(),
+                explanation.text(),
+                explanation.provider(),
+                explanation.fallbackUsed());
+        auditLines.add(objectMapper.writeValueAsString(new AuditEntry(
+                order.orderId(),
+                decision.decision().name(),
+                decision.reasonCodes().stream().map(Enum::name).toList(),
+                actionExecuted,
+                explanation.provider().name(),
+                explanation.fallbackUsed(),
+                explanation.failureCode())));
         return record;
     }
 
@@ -161,13 +192,23 @@ public final class PolicyBatchRunner {
     }
 
     /**
-     * Minimal audit row emitted to the JSONL trail.
+     * 写入 JSONL 审计轨迹的最小审计行。
      *
-     * @param orderId order identifier
-     * @param decision decision name
-     * @param reasons reason names
-     * @param actionExecuted whether a funds action executed
+     * @param orderId 订单标识
+     * @param decision 决策名称
+     * @param reasons 原因码名称列表
+     * @param actionExecuted 是否执行资金动作
+     * @param explanationProvider 解释器类型
+     * @param explanationFallbackUsed 是否使用 fallback 解释
+     * @param explanationFailureCode 解释器失败码，未失败时为空
      */
-    public record AuditEntry(String orderId, String decision, List<String> reasons, boolean actionExecuted) {
+    public record AuditEntry(
+            String orderId,
+            String decision,
+            List<String> reasons,
+            boolean actionExecuted,
+            String explanationProvider,
+            boolean explanationFallbackUsed,
+            String explanationFailureCode) {
     }
 }

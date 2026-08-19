@@ -5,18 +5,18 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * In-memory order-level idempotency store for the demo runner.
+ * Demo 运行器使用的内存级订单幂等存储。
  */
 public final class InMemoryOrderIdempotencyStore {
 
     private final ConcurrentMap<String, String> owners = new ConcurrentHashMap<>();
 
     /**
-     * Claims the given order identifier for a caller or attempt owner.
+     * 为某个处理方原子占用指定订单标识。
      *
-     * @param orderId order identifier
-     * @param owner owner or attempt identifier
-     * @return claim outcome
+     * @param orderId 订单标识
+     * @param owner 当前处理方或尝试标识
+     * @return 占用结果
      */
     public ClaimResult claim(String orderId, String owner) {
         String existing = owners.putIfAbsent(orderId, owner);

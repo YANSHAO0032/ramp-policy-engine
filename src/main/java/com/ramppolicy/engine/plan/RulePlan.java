@@ -6,12 +6,12 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Rule and fact plan for one order type.
+ * 某一订单类型对应的规则计划和事实计划。
  *
- * @param orderType order type
- * @param policyVersion active policy version
- * @param rules applicable rules only
- * @param requiredFacts facts required by the selected rules
+ * @param orderType 订单类型
+ * @param policyVersion 生效策略版本
+ * @param rules 仅包含对该订单类型适用的规则
+ * @param requiredFacts 这些规则所需的事实集合
  */
 public record RulePlan(
         OrderType orderType,

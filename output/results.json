@@ -6,7 +6,10 @@
   "retryability" : "NOT_APPLICABLE",
   "actionExecuted" : true,
   "actionType" : "send_crypto",
-  "evidence" : [ ]
+  "evidence" : [ ],
+  "explanation" : "COMPLETE: all mandatory rules and execution gates passed.",
+  "explanationProvider" : "STUB",
+  "explanationFallbackUsed" : false
 }, {
   "orderId" : "O-002",
   "decision" : "COMPLETE",
@@ -15,7 +18,10 @@
   "retryability" : "NOT_APPLICABLE",
   "actionExecuted" : true,
   "actionType" : "send_fiat",
-  "evidence" : [ ]
+  "evidence" : [ ],
+  "explanation" : "COMPLETE: all mandatory rules and execution gates passed.",
+  "explanationProvider" : "STUB",
+  "explanationFallbackUsed" : false
 }, {
   "orderId" : "O-003",
   "decision" : "FREEZE",
@@ -24,7 +30,10 @@
   "retryability" : "NON_RETRYABLE",
   "actionExecuted" : false,
   "actionType" : null,
-  "evidence" : [ "address=0xSANCT01" ]
+  "evidence" : [ "address=0xSANCT01" ],
+  "explanation" : "FREEZE: order hit freeze-level risk and cannot be automatically released. ReasonCodes=[ADDRESS_SANCTIONED]",
+  "explanationProvider" : "STUB",
+  "explanationFallbackUsed" : false
 }, {
   "orderId" : "O-004",
   "decision" : "COMPLIANCE_HOLD",
@@ -33,7 +42,10 @@
   "retryability" : "NON_RETRYABLE",
   "actionExecuted" : false,
   "actionType" : null,
-  "evidence" : [ "address=0xMIXER01", "category=mixer" ]
+  "evidence" : [ "address=0xMIXER01", "category=mixer" ],
+  "explanation" : "COMPLIANCE_HOLD: order requires compliance review before any release. ReasonCodes=[ADDRESS_HIGH_RISK]",
+  "explanationProvider" : "STUB",
+  "explanationFallbackUsed" : false
 }, {
   "orderId" : "O-005",
   "decision" : "OPS_REVIEW",
@@ -42,7 +54,10 @@
   "retryability" : "NON_RETRYABLE",
   "actionExecuted" : false,
   "actionType" : null,
-  "evidence" : [ "observed=600", "quoted=1000", "payoutUsd=990", "confirmedIncomingUsd=600.0" ]
+  "evidence" : [ "observed=600", "quoted=1000", "payoutUsd=990", "confirmedIncomingUsd=600.0" ],
+  "explanation" : "OPS_REVIEW: order has data or funds inconsistencies requiring operations review. ReasonCodes=[AMOUNT_MISMATCH,PAYOUT_EXCEEDS_CONFIRMED_VALUE]",
+  "explanationProvider" : "STUB",
+  "explanationFallbackUsed" : false
 }, {
   "orderId" : "O-006",
   "decision" : "REQUOTE",
@@ -51,7 +66,10 @@
   "retryability" : "NON_RETRYABLE",
   "actionExecuted" : false,
   "actionType" : null,
-  "evidence" : [ "slippage=0.01806755695208169677926158680282829" ]
+  "evidence" : [ "slippage=0.01806755695208169677926158680282829" ],
+  "explanation" : "REQUOTE: quote is expired or outside allowed slippage. ReasonCodes=[QUOTE_SLIPPAGE_EXCEEDED]",
+  "explanationProvider" : "STUB",
+  "explanationFallbackUsed" : false
 }, {
   "orderId" : "O-007",
   "decision" : "OPS_REVIEW",
@@ -60,7 +78,10 @@
   "retryability" : "NON_RETRYABLE",
   "actionExecuted" : false,
   "actionType" : null,
-  "evidence" : [ "declared=ERC20", "observed=TRC20" ]
+  "evidence" : [ "declared=ERC20", "observed=TRC20" ],
+  "explanation" : "OPS_REVIEW: order has data or funds inconsistencies requiring operations review. ReasonCodes=[NETWORK_MISMATCH]",
+  "explanationProvider" : "STUB",
+  "explanationFallbackUsed" : false
 }, {
   "orderId" : "O-008",
   "decision" : "OPS_REVIEW",
@@ -69,7 +90,10 @@
   "retryability" : "NON_RETRYABLE",
   "actionExecuted" : false,
   "actionType" : null,
-  "evidence" : [ "asset=SHIB", "network=ERC20" ]
+  "evidence" : [ "asset=SHIB", "network=ERC20" ],
+  "explanation" : "OPS_REVIEW: order has data or funds inconsistencies requiring operations review. ReasonCodes=[UNSUPPORTED_ASSET]",
+  "explanationProvider" : "STUB",
+  "explanationFallbackUsed" : false
 }, {
   "orderId" : "O-009",
   "decision" : "TEMPORARY_HOLD",
@@ -78,7 +102,10 @@
   "retryability" : "RETRYABLE",
   "actionExecuted" : false,
   "actionType" : null,
-  "evidence" : [ "confirmations=3", "required=12" ]
+  "evidence" : [ "confirmations=3", "required=12" ],
+  "explanation" : "TEMPORARY_HOLD: order is waiting for retryable operational facts. ReasonCodes=[INSUFFICIENT_CONFIRMATIONS]",
+  "explanationProvider" : "STUB",
+  "explanationFallbackUsed" : false
 }, {
   "orderId" : "O-010",
   "decision" : "COMPLIANCE_HOLD",
@@ -87,7 +114,10 @@
   "retryability" : "NON_RETRYABLE",
   "actionExecuted" : false,
   "actionType" : null,
-  "evidence" : [ "valueUsd=5000" ]
+  "evidence" : [ "valueUsd=5000" ],
+  "explanation" : "COMPLIANCE_HOLD: order requires compliance review before any release. ReasonCodes=[KYC_LIMIT_EXCEEDED]",
+  "explanationProvider" : "STUB",
+  "explanationFallbackUsed" : false
 }, {
   "orderId" : "O-011",
   "decision" : "COMPLIANCE_HOLD",
@@ -96,7 +126,10 @@
   "retryability" : "NON_RETRYABLE",
   "actionExecuted" : false,
   "actionType" : null,
-  "evidence" : [ "wallet funds unverified", "travel rule info missing", "vasp unknown" ]
+  "evidence" : [ "wallet funds unverified", "travel rule info missing", "vasp unknown" ],
+  "explanation" : "COMPLIANCE_HOLD: order requires compliance review before any release. ReasonCodes=[VASP_STATUS_UNKNOWN,TRAVEL_RULE_INFO_MISSING,WITHDRAWAL_FUNDS_UNVERIFIED]",
+  "explanationProvider" : "STUB",
+  "explanationFallbackUsed" : false
 }, {
   "orderId" : "O-012",
   "decision" : "REJECT",
@@ -105,7 +138,10 @@
   "retryability" : "NON_RETRYABLE",
   "actionExecuted" : false,
   "actionType" : null,
-  "evidence" : [ "bank=陈氏贸易有限公司", "verified=陈爱丽" ]
+  "evidence" : [ "bank=陈氏贸易有限公司", "verified=陈爱丽" ],
+  "explanation" : "REJECT: order cannot proceed under deterministic policy. ReasonCodes=[BANK_NAME_MISMATCH]",
+  "explanationProvider" : "STUB",
+  "explanationFallbackUsed" : false
 }, {
   "orderId" : "O-013",
   "decision" : "OPS_REVIEW",
@@ -114,7 +150,10 @@
   "retryability" : "NOT_APPLICABLE",
   "actionExecuted" : false,
   "actionType" : null,
-  "evidence" : [ ]
+  "evidence" : [ ],
+  "explanation" : "OPS_REVIEW: order has data or funds inconsistencies requiring operations review. ReasonCodes=[DUPLICATE_TRANSACTION]",
+  "explanationProvider" : "STUB",
+  "explanationFallbackUsed" : false
 }, {
   "orderId" : "O-014",
   "decision" : "COMPLIANCE_HOLD",
@@ -123,5 +162,8 @@
   "retryability" : "NON_RETRYABLE",
   "actionExecuted" : false,
   "actionType" : null,
-  "evidence" : [ "address=0xMIXER02", "category=mixer" ]
+  "evidence" : [ "address=0xMIXER02", "category=mixer" ],
+  "explanation" : "COMPLIANCE_HOLD: order requires compliance review before any release. ReasonCodes=[ADDRESS_HIGH_RISK]",
+  "explanationProvider" : "STUB",
+  "explanationFallbackUsed" : false
 } ]

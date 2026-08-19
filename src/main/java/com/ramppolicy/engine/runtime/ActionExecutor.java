@@ -4,18 +4,18 @@ import com.ramppolicy.engine.domain.Decision;
 import com.ramppolicy.engine.domain.OrderRecord;
 
 /**
- * Executes funds actions only for COMPLETE decisions after idempotency gates pass.
+ * 仅在 COMPLETE 决策且幂等门通过后执行资金动作。
  */
 public final class ActionExecutor {
 
     /**
-     * Executes the final funds action only when every gate has passed.
+     * 只有所有执行门都通过时才执行最终资金动作。
      *
-     * @param order parsed order
-     * @param decision deterministic policy decision
-     * @param orderClaimAccepted whether the order-level idempotency claim succeeded
-     * @param transactionClaimAccepted whether the transaction-level claim succeeded
-     * @return execution result
+     * @param order 已解析订单
+     * @param decision 确定性策略决策
+     * @param orderClaimAccepted 订单级幂等占用是否成功
+     * @param transactionClaimAccepted 交易级幂等占用是否成功
+     * @return 执行动作结果
      */
     public ActionResult execute(OrderRecord order, Decision decision, boolean orderClaimAccepted, boolean transactionClaimAccepted) {
         if (decision != Decision.COMPLETE) {
@@ -33,17 +33,17 @@ public final class ActionExecutor {
     }
 
     /**
-     * Execution outcome for the action gate.
+     * 执行门之后的动作结果。
      *
-     * @param executed whether a funds action ran
-     * @param actionType the executed action type, if any
+     * @param executed 是否执行了资金动作
+     * @param actionType 已执行的动作类型，未执行时为空
      */
     public record ActionResult(boolean executed, String actionType) {
 
         /**
-         * Creates a non-executed action result.
+         * 创建未执行资金动作的结果。
          *
-         * @return not-executed result
+         * @return 未执行结果
          */
         public static ActionResult notExecuted() {
             return new ActionResult(false, null);

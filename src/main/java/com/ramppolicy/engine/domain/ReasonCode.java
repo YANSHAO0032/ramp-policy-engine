@@ -1,7 +1,7 @@
 package com.ramppolicy.engine.domain;
 
 /**
- * Structured machine-readable reasons for a policy decision.
+ * 策略决策的结构化机器可读原因码。
  */
 public enum ReasonCode {
     DUPLICATE_ORDER,

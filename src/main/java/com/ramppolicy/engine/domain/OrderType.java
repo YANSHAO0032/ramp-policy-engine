@@ -1,21 +1,21 @@
 package com.ramppolicy.engine.domain;
 
 /**
- * The supported order directions in the demo policy engine.
+ * Demo 策略引擎支持的订单资金方向。
  */
 public enum OrderType {
     /**
-     * Customer pays fiat and receives crypto to an external address.
+     * 客户支付法币，平台向客户外部地址发送加密资产。
      */
     ON_RAMP,
 
     /**
-     * Customer deposits crypto and receives fiat to a bank account.
+     * 客户向平台入金加密资产，平台向客户银行账户支付法币。
      */
     OFF_RAMP,
 
     /**
-     * Customer withdraws crypto from the platform to an external address.
+     * 客户从平台账户向外部地址提取加密资产。
      */
     WITHDRAWAL
 }

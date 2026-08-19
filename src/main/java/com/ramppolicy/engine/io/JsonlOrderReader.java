@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Line-safe JSONL reader for demo orders.
+ * Demo 订单 JSONL 的逐行安全解析器。
  */
 public final class JsonlOrderReader {
 
@@ -26,11 +26,11 @@ public final class JsonlOrderReader {
     }
 
     /**
-     * Parses a JSONL document into order records.
+     * 将 JSONL 文档解析为订单列表。
      *
-     * @param jsonl JSONL payload
-     * @return parsed orders
-     * @throws IOException when any line is malformed
+     * @param jsonl JSONL 文本
+     * @return 解析后的订单列表
+     * @throws IOException 任意一行 JSON 格式错误时抛出
      */
     public List<OrderRecord> readAll(String jsonl) throws IOException {
         List<OrderRecord> orders = new ArrayList<>();
@@ -45,11 +45,11 @@ public final class JsonlOrderReader {
     }
 
     /**
-     * Parses a single order record from JSON.
+     * 从单行 JSON 中解析一个订单。
      *
-     * @param json JSON payload
-     * @return parsed order
-     * @throws IOException when the payload is malformed
+     * @param json JSON 文本
+     * @return 解析后的订单
+     * @throws IOException JSON 格式错误时抛出
      */
     public OrderRecord readOne(String json) throws IOException {
         JsonNode node = objectMapper.readTree(json);

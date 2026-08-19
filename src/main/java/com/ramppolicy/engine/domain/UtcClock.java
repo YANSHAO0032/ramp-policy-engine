@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 
 /**
- * Central UTC clock helper for reproducible evaluation.
+ * 统一 UTC 时钟工具，用于保持评估过程可复现。
  */
 public final class UtcClock {
 
@@ -17,9 +17,9 @@ public final class UtcClock {
     }
 
     /**
-     * Returns the system UTC clock for non-demo runs.
+     * 返回非 Demo 场景可使用的系统 UTC 时钟。
      *
-     * @return UTC clock
+     * @return UTC 时钟
      */
     public static Clock utc() {
         return Clock.systemUTC();

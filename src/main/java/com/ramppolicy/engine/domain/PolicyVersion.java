@@ -1,7 +1,7 @@
 package com.ramppolicy.engine.domain;
 
 /**
- * The pinned policy version used by the demo.
+ * Demo 固定使用的策略版本标识。
  */
 public final class PolicyVersion {
 

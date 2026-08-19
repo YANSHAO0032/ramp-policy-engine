@@ -3,10 +3,10 @@ package com.ramppolicy.engine.runtime;
 import java.util.List;
 
 /**
- * Result bundle for a batch execution over demo orders.
+ * Demo 订单批处理执行后的结果包。
  *
- * @param results per-order execution records
- * @param auditLines serialized audit entries
+ * @param results 每单执行结果
+ * @param auditLines 序列化后的审计行
  */
 public record BatchRunResult(
         List<OrderExecutionRecord> results,

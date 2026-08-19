@@ -7,7 +7,7 @@ import java.util.EnumSet;
 import java.util.List;
 
 /**
- * Static resolver for the V4 demo policy rule matrix.
+ * V4 Demo 策略规则矩阵的静态解析器。
  */
 public final class StaticRulePlanResolver implements RulePlanResolver {
 

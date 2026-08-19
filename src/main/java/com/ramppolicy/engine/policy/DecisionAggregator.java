@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Reduces rule results into a single deterministic decision.
+ * 将多条规则结果聚合为一个确定性订单决策。
  */
 public final class DecisionAggregator {
 
@@ -29,10 +29,10 @@ public final class DecisionAggregator {
     }
 
     /**
-     * Collapses rule-level results into one deterministic decision.
+     * 按决策优先级、原因码并集和升级团队并集聚合规则结果。
      *
-     * @param results per-rule results
-     * @return aggregated decision state
+     * @param results 单条规则结果列表
+     * @return 聚合后的决策状态
      */
     public AggregatedDecision aggregate(List<RuleResult> results) {
         Decision topDecision = Decision.COMPLETE;
@@ -71,13 +71,13 @@ public final class DecisionAggregator {
     }
 
     /**
-     * Aggregated decision state.
+     * 聚合后的决策状态。
      *
-     * @param decision top-level decision
-     * @param reasonCodes all reasons
-     * @param escalationTargets all escalation targets
-     * @param retryability strictest retryability
-     * @param evidence all evidence entries
+     * @param decision 顶层处置结果
+     * @param reasonCodes 全部原因码
+     * @param escalationTargets 全部升级复核团队
+     * @param retryability 最严格的自动重试语义
+     * @param evidence 全部证据条目
      */
     public record AggregatedDecision(
             Decision decision,

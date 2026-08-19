@@ -1,7 +1,7 @@
 package com.ramppolicy.engine.plan;
 
 /**
- * Structured fact buckets collected before policy rules run.
+ * 策略规则执行前需要收集的结构化事实类别。
  */
 public enum FactRequirement {
     CUSTOMER,

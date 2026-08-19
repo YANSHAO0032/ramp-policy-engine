@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Deterministic policy engine for the demo dataset.
+ * 面向 Demo 数据集的确定性策略引擎。
  */
 public final class PolicyEngine {
 
@@ -42,11 +42,11 @@ public final class PolicyEngine {
     private final DecisionAggregator aggregator = new DecisionAggregator();
 
     /**
-     * Creates a policy engine with explicit clock control.
+     * 使用显式时钟创建策略引擎，便于测试和可复现评估。
      *
-     * @param resolver rule-plan resolver
-     * @param facts authoritative demo facts
-     * @param clock evaluation clock
+     * @param resolver 规则计划解析器
+     * @param facts Demo 权威事实集合
+     * @param clock 评估时钟
      */
     public PolicyEngine(RulePlanResolver resolver, DemoFacts facts, Clock clock) {
         this.resolver = resolver;
@@ -56,20 +56,20 @@ public final class PolicyEngine {
     }
 
     /**
-     * Creates a policy engine with the fixed demo clock.
+     * 使用固定 Demo 时钟创建策略引擎。
      *
-     * @param resolver rule-plan resolver
-     * @param facts authoritative demo facts
+     * @param resolver 规则计划解析器
+     * @param facts Demo 权威事实集合
      */
     public PolicyEngine(RulePlanResolver resolver, DemoFacts facts) {
         this(resolver, facts, UtcClock.fixed(GOLDEN_NOW));
     }
 
     /**
-     * Evaluates one order against the resolved rule plan.
+     * 按订单类型解析规则计划并评估单个订单。
      *
-     * @param order parsed order
-     * @return deterministic decision
+     * @param order 已解析订单
+     * @return 确定性决策
      */
     public DeterministicDecision evaluate(OrderRecord order) {
         RulePlan plan = resolver.resolve(order.type());

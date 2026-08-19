@@ -1,7 +1,7 @@
 package com.ramppolicy.engine.domain;
 
 /**
- * The review team(s) that must receive a case.
+ * 订单需要升级流转的人工复核团队。
  */
 public enum EscalationTarget {
     OPS,

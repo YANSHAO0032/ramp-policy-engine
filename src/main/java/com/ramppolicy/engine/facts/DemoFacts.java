@@ -17,12 +17,12 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Authoritative demo facts loaded from vendored JSON resources.
+ * 从仓库内置 JSON 资源加载的 Demo 权威事实集合。
  *
- * @param customers customer facts by customer id
- * @param assets asset/network facts by `asset/network`
- * @param addressRisks address risk facts by address
- * @param referenceRates reference rates by pair such as `BTC/USD`
+ * @param customers 按客户标识索引的客户事实
+ * @param assets 按 asset/network 索引的资产网络事实
+ * @param addressRisks 按地址索引的风险事实
+ * @param referenceRates 按 BTC/USD 等交易对索引的参考汇率
  */
 public record DemoFacts(
         Map<String, CustomerRecord> customers,
@@ -31,12 +31,12 @@ public record DemoFacts(
         Map<String, BigDecimal> referenceRates) {
 
     /**
-     * Loads the vendored demo facts from a filesystem directory.
+     * 从文件系统目录加载仓库内置 Demo 事实。
      *
-     * @param baseDir filesystem directory containing the JSON inputs
-     * @param objectMapper JSON parser
-     * @return demo facts bundle
-     * @throws IOException when a file is missing or malformed
+     * @param baseDir 包含 JSON 输入文件的目录
+     * @param objectMapper JSON 解析器
+     * @return Demo 事实集合
+     * @throws IOException 文件缺失或格式错误时抛出
      */
     public static DemoFacts load(Path baseDir, ObjectMapper objectMapper) throws IOException {
         return new DemoFacts(
@@ -47,12 +47,12 @@ public record DemoFacts(
     }
 
     /**
-     * Loads the vendored demo facts from the classpath.
+     * 从类路径加载仓库内置 Demo 事实。
      *
-     * @param resourceDir classpath directory such as {@code demo-data}
-     * @param objectMapper JSON parser
-     * @return demo facts bundle
-     * @throws IOException when a resource is missing or malformed
+     * @param resourceDir 类路径目录，例如 {@code demo-data}
+     * @param objectMapper JSON 解析器
+     * @return Demo 事实集合
+     * @throws IOException 资源缺失或格式错误时抛出
      */
     public static DemoFacts loadFromClasspath(Path resourceDir, ObjectMapper objectMapper) throws IOException {
         String prefix = resourceDir.toString().replace('\\', '/');
@@ -170,11 +170,11 @@ public record DemoFacts(
     }
 
     /**
-     * Looks up the asset/network configuration for a declared transfer.
+     * 查询订单声明资产和网络对应的配置。
      *
-     * @param asset asset ticker
-     * @param network network code
-     * @return asset/network record or null when unsupported
+     * @param asset 资产代码
+     * @param network 网络代码
+     * @return 支持时返回资产网络配置，不支持时返回 null
      */
     public AssetNetworkRecord asset(String asset, String network) {
         return assets.get(assetKey(asset, network));
