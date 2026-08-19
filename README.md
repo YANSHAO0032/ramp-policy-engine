@@ -10,6 +10,130 @@ Agent investigates. Policy decides. Gates authorize. Executor acts. LLM only exp
 
 也就是说，本项目的 Agent 负责按订单类型收集规则所需事实并编排执行；资金能否放行由 `PolicyEngine`、幂等门和 `ActionExecutor` 共同决定。LLM 只生成 `explanation` 文本，不能修改 `Decision`、`ReasonCode`、升级团队、重试语义或资金动作。
 
+## 工程架构图
+
+```text
+┌──────────────────────────┐
+│        Demo Orders       │  orders.jsonl
+└─────────────┬────────────┘
+              │
+              v
+┌──────────────────────────┐
+│      JsonlOrderReader    │
+└─────────────┬────────────┘
+              │
+              v
+┌──────────────────────────────────────────────────────────────┐
+│                         PolicyBatchRunner                    │
+│  ┌──────────────────┐   ┌─────────────────────────────────┐  │
+│  │    DemoFacts     │   │         ExplanationProvider     │  │
+│  │ customers/assets │   │  stub / recorded / openai       │  │
+│  │ address/rates    │   │  only explains, never decides   │  │
+│  └─────────┬────────┘   └─────────────────────────────────┘  │
+│            │                         ▲                       │
+│            v                         │                       │
+│    ┌──────────────────┐              │                       │
+│    │   PolicyEngine   │              │                       │
+│    │ rules + evidence │              │                       │
+│    └─────────┬────────┘              │                       │
+│              │                       │                       │
+│              v                       │                       │
+│    ┌──────────────────┐              │                       │
+│    │  IdempotencyGate │              │                       │
+│    └─────────┬────────┘              │                       │
+│              │                       │                       │
+│              v                       │                       │
+│    ┌──────────────────┐              │                       │
+│    │ ActionExecutor   │              │                       │
+│    └─────────┬────────┘              │                       │
+│              │                       │                       │
+│              v                       │                       │
+│   results.json / audit.jsonl  ────────┘                       │
+└──────────────────────────────────────────────────────────────┘
+```
+
+读图方式：
+
+- `PolicyEngine` 只输出确定性决策。
+- 幂等门决定能不能重复处理。
+- `ActionExecutor` 只在 `COMPLETE` 且幂等通过时执行动作。
+- `ExplanationProvider` 只补充解释，不参与授权。
+
+## 状态机转移图
+
+```text
+                 ┌──────────────┐
+                 │   INPUT      │
+                 └──────┬───────┘
+                        │
+                        v
+                 ┌──────────────┐
+                 │   EVALUATE   │
+                 └──────┬───────┘
+                        │
+      ┌─────────────────┼─────────────────┬─────────────────┬─────────────────┐
+      │                 │                 │                 │                 │
+      v                 v                 v                 v                 v
+┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│  COMPLETE    │  │ TEMP_HOLD    │  │ REQUOTE      │  │ OPS_REVIEW   │  │  COMPLIANCE  │
+│              │  │              │  │              │  │              │  │    HOLD      │
+└──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘
+       │                 │                 │                 │                 │
+       │                 │                 │                 │                 │
+       v                 v                 v                 v                 v
+┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│ Idempotency  │  │ No action    │  │ No action    │  │ No action    │  │ No action    │
+│   gates      │  │ + explain    │  │ + explain    │  │ + explain    │  │ + explain    │
+└──────┬───────┘  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘
+       │
+       v
+┌──────────────┐
+│  ACTION      │
+│ EXECUTED?    │
+└──────┬───────┘
+       │
+   yes  v  no
+  ┌───────────┐
+  │ payout /  │
+  │ release   │
+  └───────────┘
+```
+
+转移规则简表：
+
+- 命中制裁或冻结级风险，直接进入 `FREEZE`。
+- 命中合规阻断，进入 `COMPLIANCE_HOLD`。
+- 不支持、过期、缺事实或资金异常，分别进入对应人工/运维状态。
+- 只有 `COMPLETE` 才继续走幂等门和执行门。
+
+## LLM 边界图
+
+```text
+LLM_PROVIDER
+   │
+   v
+LlmProperties
+   │
+   v
+ExplanationProviderFactory
+   ├── STUB      -> StubExplanationProvider
+   ├── RECORDED  -> RecordedExplanationProvider -> fallback stub
+   └── OPENAI    -> OpenAiExplanationProvider -> SafeExplanationProvider -> fallback stub
+                                                │
+                                                v
+                                     explanation text only
+                                                │
+                                                v
+                                      results.json / audit.jsonl
+```
+
+这条链路的边界很硬：
+
+- 解释器只能产出文本。
+- 文本不能改 `Decision`。
+- 文本不能改 `ReasonCode`。
+- 文本不能触发资金动作。
+
 ## 项目结构
 
 ```text
