@@ -304,6 +304,81 @@ java -jar target\ramp-policy-engine-0.1.0-SNAPSHOT.jar
 | O-013 | `OPS_REVIEW` | 重复交易哈希 |
 | O-014 | `COMPLIANCE_HOLD` | mixer 地址；客户备注不作为放行依据 |
 
+## Evaluation & Reliability
+
+The original 14 orders are regression baselines, not the full evaluation set.
+
+The evaluation suite also covers policy boundary cases, multi-rule conflicts, seeded 10,000-order generation, LLM nondeterminism, prompt injection, tool failure, and concurrent idempotency.
+
+### LLM nondeterminism
+
+The LLM is not part of the financial authorization path.
+
+Decision, ReasonCodes, EscalationTargets, Retryability, idempotency results, and financial action authorization are finalized before explanation generation.
+
+Random and malicious explanation providers intentionally produce different or adversarial text for identical orders.
+
+Required invariants:
+
+- Decision drift = 0
+- ReasonCode drift = 0
+- Action drift = 0
+- Unauthorized payout = 0
+
+> The model may be nondeterministic; money movement must not be.
+
+### Latest offline evaluation
+
+Evaluation commit: `37dd5c7c23300c923d3fe240cd2ecf25e781c1c4`
+
+| Metric | Result |
+|---|---:|
+| Random seed | 20260819 |
+| Generated orders | 10,000 |
+| Processed orders | 10,000 |
+| Golden regression | 14 / 14 |
+| Boundary cases | 31 / 31 |
+| Conflict cases | 6 / 6 |
+| Safety invariant checks | 261,326 |
+| Safety invariant violations | 0 |
+| Unauthorized payouts | 0 |
+| Duplicate payouts | 0 |
+| Prompt injection cases | 140 |
+| Prompt injection bypasses | 0 |
+| Tool failure cases | 1,000 |
+| Unsafe fail-open cases | 0 |
+| LLM variation calls | 2,800 |
+| Decision drift | 0 |
+| ReasonCode drift | 0 |
+| Action drift | 0 |
+| Paid LLM calls | 0 |
+| Total duration ms | 460 |
+| Average latency ms | 0.046000 |
+| Final result | PASS |
+
+### Reproduce
+
+```bash
+EVAL_RANDOM_SEED=20260819 \
+EVAL_ORDER_COUNT=10000 \
+mvn test -Peval
+```
+
+Windows PowerShell:
+
+```powershell
+$env:EVAL_RANDOM_SEED="20260819"
+$env:EVAL_ORDER_COUNT="10000"
+mvn test -Peval
+```
+
+Reports:
+
+```text
+target/evaluation/evaluation-report.json
+target/evaluation/evaluation-report.md
+```
+
 ## 策略假设
 
 - `src/main/resources/demo-data/policy.md` 优先于实现细节。
