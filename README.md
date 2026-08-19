@@ -304,59 +304,59 @@ java -jar target\ramp-policy-engine-0.1.0-SNAPSHOT.jar
 | O-013 | `OPS_REVIEW` | 重复交易哈希 |
 | O-014 | `COMPLIANCE_HOLD` | mixer 地址；客户备注不作为放行依据 |
 
-## Evaluation & Reliability
+## 评测与可靠性
 
-The original 14 orders are regression baselines, not the full evaluation set.
+原始 14 单只是回归基线，不是完整评测集。
 
-The evaluation suite also covers policy boundary cases, multi-rule conflicts, seeded 10,000-order generation, LLM nondeterminism, prompt injection, tool failure, and concurrent idempotency.
+评测套件还覆盖策略边界、多规则冲突、固定种子 10,000 单生成、LLM 非确定性、提示注入、工具失败以及并发幂等。
 
-### LLM nondeterminism
+### LLM 非确定性
 
-The LLM is not part of the financial authorization path.
+LLM 不在资金授权路径中。
 
-Decision, ReasonCodes, EscalationTargets, Retryability, idempotency results, and financial action authorization are finalized before explanation generation.
+`Decision`、`ReasonCodes`、`EscalationTargets`、`Retryability`、幂等结果以及资金动作授权，都在生成解释文本之前完成。
 
-Random and malicious explanation providers intentionally produce different or adversarial text for identical orders.
+随机解释器和恶意解释器会对同一订单故意返回不同甚至带攻击性的文本。
 
-Required invariants:
+必须保持的不变量：
 
-- Decision drift = 0
-- ReasonCode drift = 0
-- Action drift = 0
-- Unauthorized payout = 0
+- `Decision` 漂移 = 0
+- `ReasonCode` 漂移 = 0
+- `Action` 漂移 = 0
+- 未授权出款 = 0
 
-> The model may be nondeterministic; money movement must not be.
+> 模型可以非确定性，但资金流转不能非确定性。
 
-### Latest offline evaluation
+### 最近一次离线评测
 
-Evaluation commit: `37dd5c7c23300c923d3fe240cd2ecf25e781c1c4`
+评测提交：`37dd5c7c23300c923d3fe240cd2ecf25e781c1c4`
 
-| Metric | Result |
+| 指标 | 结果 |
 |---|---:|
-| Random seed | 20260819 |
-| Generated orders | 10,000 |
-| Processed orders | 10,000 |
-| Golden regression | 14 / 14 |
-| Boundary cases | 31 / 31 |
-| Conflict cases | 6 / 6 |
-| Safety invariant checks | 261,326 |
-| Safety invariant violations | 0 |
-| Unauthorized payouts | 0 |
-| Duplicate payouts | 0 |
-| Prompt injection cases | 140 |
-| Prompt injection bypasses | 0 |
-| Tool failure cases | 1,000 |
-| Unsafe fail-open cases | 0 |
-| LLM variation calls | 2,800 |
-| Decision drift | 0 |
-| ReasonCode drift | 0 |
-| Action drift | 0 |
-| Paid LLM calls | 0 |
-| Total duration ms | 460 |
-| Average latency ms | 0.046000 |
-| Final result | PASS |
+| 随机种子 | 20260819 |
+| 生成订单数 | 10,000 |
+| 处理订单数 | 10,000 |
+| Golden 回归 | 14 / 14 |
+| 边界用例 | 31 / 31 |
+| 冲突用例 | 6 / 6 |
+| 安全不变量检查次数 | 261,326 |
+| 安全不变量违规次数 | 0 |
+| 未授权出款 | 0 |
+| 重复出款 | 0 |
+| 提示注入用例数 | 140 |
+| 提示注入绕过次数 | 0 |
+| 工具失败用例数 | 1,000 |
+| 不安全 fail-open 次数 | 0 |
+| LLM 变体调用次数 | 2,800 |
+| 决策漂移 | 0 |
+| 原因码漂移 | 0 |
+| 动作漂移 | 0 |
+| 付费 LLM 调用数 | 0 |
+| 总耗时 ms | 460 |
+| 平均耗时 ms | 0.046000 |
+| 最终结果 | PASS |
 
-### Reproduce
+### 复现方式
 
 ```bash
 EVAL_RANDOM_SEED=20260819 \
@@ -364,7 +364,7 @@ EVAL_ORDER_COUNT=10000 \
 mvn test -Peval
 ```
 
-Windows PowerShell:
+Windows PowerShell：
 
 ```powershell
 $env:EVAL_RANDOM_SEED="20260819"
@@ -372,7 +372,7 @@ $env:EVAL_ORDER_COUNT="10000"
 mvn test -Peval
 ```
 
-Reports:
+报告文件：
 
 ```text
 target/evaluation/evaluation-report.json
