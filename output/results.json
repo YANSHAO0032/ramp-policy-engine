@@ -1,0 +1,127 @@
+[ {
+  "orderId" : "O-001",
+  "decision" : "COMPLETE",
+  "reasonCodes" : [ ],
+  "escalationTargets" : [ ],
+  "retryability" : "NOT_APPLICABLE",
+  "actionExecuted" : true,
+  "actionType" : "send_crypto",
+  "evidence" : [ ]
+}, {
+  "orderId" : "O-002",
+  "decision" : "COMPLETE",
+  "reasonCodes" : [ ],
+  "escalationTargets" : [ ],
+  "retryability" : "NOT_APPLICABLE",
+  "actionExecuted" : true,
+  "actionType" : "send_fiat",
+  "evidence" : [ ]
+}, {
+  "orderId" : "O-003",
+  "decision" : "FREEZE",
+  "reasonCodes" : [ "ADDRESS_SANCTIONED" ],
+  "escalationTargets" : [ "COMPLIANCE" ],
+  "retryability" : "NON_RETRYABLE",
+  "actionExecuted" : false,
+  "actionType" : null,
+  "evidence" : [ "address=0xSANCT01" ]
+}, {
+  "orderId" : "O-004",
+  "decision" : "COMPLIANCE_HOLD",
+  "reasonCodes" : [ "ADDRESS_HIGH_RISK" ],
+  "escalationTargets" : [ "COMPLIANCE" ],
+  "retryability" : "NON_RETRYABLE",
+  "actionExecuted" : false,
+  "actionType" : null,
+  "evidence" : [ "address=0xMIXER01", "category=mixer" ]
+}, {
+  "orderId" : "O-005",
+  "decision" : "OPS_REVIEW",
+  "reasonCodes" : [ "AMOUNT_MISMATCH", "PAYOUT_EXCEEDS_CONFIRMED_VALUE" ],
+  "escalationTargets" : [ "OPS" ],
+  "retryability" : "NON_RETRYABLE",
+  "actionExecuted" : false,
+  "actionType" : null,
+  "evidence" : [ "observed=600", "quoted=1000", "payoutUsd=990", "confirmedIncomingUsd=600.0" ]
+}, {
+  "orderId" : "O-006",
+  "decision" : "REQUOTE",
+  "reasonCodes" : [ "QUOTE_SLIPPAGE_EXCEEDED" ],
+  "escalationTargets" : [ "OPS" ],
+  "retryability" : "NON_RETRYABLE",
+  "actionExecuted" : false,
+  "actionType" : null,
+  "evidence" : [ "slippage=0.01806755695208169677926158680282829" ]
+}, {
+  "orderId" : "O-007",
+  "decision" : "OPS_REVIEW",
+  "reasonCodes" : [ "NETWORK_MISMATCH" ],
+  "escalationTargets" : [ "OPS" ],
+  "retryability" : "NON_RETRYABLE",
+  "actionExecuted" : false,
+  "actionType" : null,
+  "evidence" : [ "declared=ERC20", "observed=TRC20" ]
+}, {
+  "orderId" : "O-008",
+  "decision" : "OPS_REVIEW",
+  "reasonCodes" : [ "UNSUPPORTED_ASSET" ],
+  "escalationTargets" : [ "OPS" ],
+  "retryability" : "NON_RETRYABLE",
+  "actionExecuted" : false,
+  "actionType" : null,
+  "evidence" : [ "asset=SHIB", "network=ERC20" ]
+}, {
+  "orderId" : "O-009",
+  "decision" : "TEMPORARY_HOLD",
+  "reasonCodes" : [ "INSUFFICIENT_CONFIRMATIONS" ],
+  "escalationTargets" : [ "OPS" ],
+  "retryability" : "RETRYABLE",
+  "actionExecuted" : false,
+  "actionType" : null,
+  "evidence" : [ "confirmations=3", "required=12" ]
+}, {
+  "orderId" : "O-010",
+  "decision" : "COMPLIANCE_HOLD",
+  "reasonCodes" : [ "KYC_LIMIT_EXCEEDED" ],
+  "escalationTargets" : [ "COMPLIANCE" ],
+  "retryability" : "NON_RETRYABLE",
+  "actionExecuted" : false,
+  "actionType" : null,
+  "evidence" : [ "valueUsd=5000" ]
+}, {
+  "orderId" : "O-011",
+  "decision" : "COMPLIANCE_HOLD",
+  "reasonCodes" : [ "VASP_STATUS_UNKNOWN", "TRAVEL_RULE_INFO_MISSING", "WITHDRAWAL_FUNDS_UNVERIFIED" ],
+  "escalationTargets" : [ "OPS", "COMPLIANCE" ],
+  "retryability" : "NON_RETRYABLE",
+  "actionExecuted" : false,
+  "actionType" : null,
+  "evidence" : [ "wallet funds unverified", "travel rule info missing", "vasp unknown" ]
+}, {
+  "orderId" : "O-012",
+  "decision" : "REJECT",
+  "reasonCodes" : [ "BANK_NAME_MISMATCH" ],
+  "escalationTargets" : [ "COMPLIANCE" ],
+  "retryability" : "NON_RETRYABLE",
+  "actionExecuted" : false,
+  "actionType" : null,
+  "evidence" : [ "bank=陈氏贸易有限公司", "verified=陈爱丽" ]
+}, {
+  "orderId" : "O-013",
+  "decision" : "OPS_REVIEW",
+  "reasonCodes" : [ "DUPLICATE_TRANSACTION" ],
+  "escalationTargets" : [ ],
+  "retryability" : "NOT_APPLICABLE",
+  "actionExecuted" : false,
+  "actionType" : null,
+  "evidence" : [ ]
+}, {
+  "orderId" : "O-014",
+  "decision" : "COMPLIANCE_HOLD",
+  "reasonCodes" : [ "ADDRESS_HIGH_RISK" ],
+  "escalationTargets" : [ "COMPLIANCE" ],
+  "retryability" : "NON_RETRYABLE",
+  "actionExecuted" : false,
+  "actionType" : null,
+  "evidence" : [ "address=0xMIXER02", "category=mixer" ]
+} ]

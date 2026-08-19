@@ -1,0 +1,441 @@
+package com.ramppolicy.engine.policy;
+
+import com.ramppolicy.engine.domain.AddressRiskRecord;
+import com.ramppolicy.engine.domain.AssetNetworkRecord;
+import com.ramppolicy.engine.domain.CustomerRecord;
+import com.ramppolicy.engine.domain.Decision;
+import com.ramppolicy.engine.domain.DeterministicDecision;
+import com.ramppolicy.engine.domain.EscalationTarget;
+import com.ramppolicy.engine.domain.OrderRecord;
+import com.ramppolicy.engine.domain.OrderType;
+import com.ramppolicy.engine.domain.PolicyVersion;
+import com.ramppolicy.engine.domain.ReasonCode;
+import com.ramppolicy.engine.domain.Retryability;
+import com.ramppolicy.engine.domain.UtcClock;
+import com.ramppolicy.engine.facts.DemoFacts;
+import com.ramppolicy.engine.facts.UsdValuationService;
+import com.ramppolicy.engine.plan.PlannedRule;
+import com.ramppolicy.engine.plan.RuleId;
+import com.ramppolicy.engine.plan.RulePlan;
+import com.ramppolicy.engine.plan.RulePlanResolver;
+
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * Deterministic policy engine for the demo dataset.
+ */
+public final class PolicyEngine {
+
+    private static final Instant GOLDEN_NOW = Instant.parse("2026-07-28T12:00:00Z");
+    private static final BigDecimal TRAVEL_RULE_THRESHOLD_USD = new BigDecimal("1000");
+
+    private final RulePlanResolver resolver;
+    private final DemoFacts facts;
+    private final UsdValuationService valuationService;
+    private final Clock clock;
+    private final DecisionAggregator aggregator = new DecisionAggregator();
+
+    /**
+     * Creates a policy engine with explicit clock control.
+     *
+     * @param resolver rule-plan resolver
+     * @param facts authoritative demo facts
+     * @param clock evaluation clock
+     */
+    public PolicyEngine(RulePlanResolver resolver, DemoFacts facts, Clock clock) {
+        this.resolver = resolver;
+        this.facts = facts;
+        this.valuationService = new UsdValuationService(facts.referenceRates());
+        this.clock = clock;
+    }
+
+    /**
+     * Creates a policy engine with the fixed demo clock.
+     *
+     * @param resolver rule-plan resolver
+     * @param facts authoritative demo facts
+     */
+    public PolicyEngine(RulePlanResolver resolver, DemoFacts facts) {
+        this(resolver, facts, UtcClock.fixed(GOLDEN_NOW));
+    }
+
+    /**
+     * Evaluates one order against the resolved rule plan.
+     *
+     * @param order parsed order
+     * @return deterministic decision
+     */
+    public DeterministicDecision evaluate(OrderRecord order) {
+        RulePlan plan = resolver.resolve(order.type());
+        CustomerRecord customer = facts.customers().get(order.customerId());
+        AssetNetworkRecord asset = facts.asset(order.asset(), order.network());
+        List<RuleResult> results = new ArrayList<>();
+
+        for (PlannedRule plannedRule : plan.rules()) {
+            RuleResult result = evaluatePlannedRule(plannedRule.ruleId(), order, customer, asset);
+            if (result != null) {
+                results.add(result);
+            }
+        }
+
+        DecisionAggregator.AggregatedDecision aggregated = aggregator.aggregate(results);
+        return new DeterministicDecision(
+                order.orderId(),
+                aggregated.decision(),
+                aggregated.reasonCodes(),
+                aggregated.escalationTargets(),
+                aggregated.retryability(),
+                aggregated.evidence(),
+                PolicyVersion.VALUE,
+                clock.instant());
+    }
+
+    private RuleResult evaluatePlannedRule(
+            RuleId ruleId,
+            OrderRecord order,
+            CustomerRecord customer,
+            AssetNetworkRecord asset) {
+        return switch (ruleId) {
+            case CUSTOMER_STATUS -> evaluateCustomerStatus(customer);
+            case ASSET_SUPPORT -> evaluateAssetSupport(order, asset);
+            case ADDRESS_RISK -> evaluateAddressRisk(order);
+            case KYC_LIMIT -> evaluateKycLimit(order, customer, asset);
+            case MINIMUM_AMOUNT -> evaluateMinimumAmount(order, asset);
+            case FIAT_RECEIPT -> evaluateFiatReceipt(order);
+            case ON_RAMP_CONSERVATION -> evaluateOnRampConservation(order, asset);
+            case CONFIRMATION -> evaluateConfirmation(order, asset);
+            case AMOUNT_MATCH -> evaluateAmountMatch(order);
+            case PAYOUT_CONSERVATION -> evaluatePayoutConservation(order, asset);
+            case NETWORK_MATCH -> evaluateNetworkMatch(order);
+            case BANK_OWNERSHIP -> evaluateBankOwnership(order, customer);
+            case QUOTE_EXPIRY -> evaluateQuoteExpiry(order, asset);
+            case TRAVEL_RULE -> evaluateTravelRule(order, asset);
+            case WITHDRAWAL_FUNDS -> evaluateWithdrawalFunds(order);
+            case VASP_UNKNOWN_WARNING -> evaluateVaspUnknownWarning(order, asset);
+        };
+    }
+
+    private RuleResult evaluateCustomerStatus(CustomerRecord customer) {
+        if (customer == null) {
+            return RuleResult.block(RuleId.CUSTOMER_STATUS, Decision.OPS_REVIEW,
+                    Set.of(ReasonCode.CUSTOMER_NOT_FOUND), Set.of(EscalationTarget.OPS), Retryability.NON_RETRYABLE, List.of("customer missing"));
+        }
+        if (!"active".equals(customer.status())) {
+            return RuleResult.block(RuleId.CUSTOMER_STATUS, Decision.COMPLIANCE_HOLD,
+                    Set.of(ReasonCode.CUSTOMER_NOT_ACTIVE), Set.of(EscalationTarget.COMPLIANCE), Retryability.NON_RETRYABLE, List.of("customer status=" + customer.status()));
+        }
+        return RuleResult.pass(RuleId.CUSTOMER_STATUS);
+    }
+
+    private RuleResult evaluateAssetSupport(OrderRecord order, AssetNetworkRecord asset) {
+        if (asset == null) {
+            return RuleResult.block(RuleId.ASSET_SUPPORT, Decision.OPS_REVIEW,
+                    Set.of(ReasonCode.UNSUPPORTED_ASSET), Set.of(EscalationTarget.OPS), Retryability.NON_RETRYABLE,
+                    List.of("asset=" + order.asset(), "network=" + order.network()));
+        }
+        return RuleResult.pass(RuleId.ASSET_SUPPORT);
+    }
+
+    private RuleResult evaluateAddressRisk(OrderRecord order) {
+        String address = switch (order.type()) {
+            case ON_RAMP, WITHDRAWAL -> order.destinationAddress();
+            case OFF_RAMP -> order.deposit() == null ? null : order.deposit().fromAddress();
+        };
+        if (address == null || address.isBlank()) {
+            return RuleResult.block(RuleId.ADDRESS_RISK, Decision.OPS_REVIEW,
+                    Set.of(order.type() == OrderType.OFF_RAMP ? ReasonCode.SOURCE_ADDRESS_MISSING : ReasonCode.DESTINATION_ADDRESS_MISSING),
+                    Set.of(EscalationTarget.OPS), Retryability.NON_RETRYABLE, List.of("address missing"));
+        }
+        AddressRiskRecord risk = facts.addressRisks().get(address);
+        if (risk == null) {
+            return RuleResult.block(RuleId.ADDRESS_RISK, Decision.COMPLIANCE_HOLD,
+                    Set.of(ReasonCode.ADDRESS_UNKNOWN), Set.of(EscalationTarget.COMPLIANCE), Retryability.NON_RETRYABLE, List.of("address=" + address));
+        }
+        String category = risk.category();
+        if ("sanctioned".equals(category)) {
+            return RuleResult.block(RuleId.ADDRESS_RISK, Decision.FREEZE,
+                    Set.of(ReasonCode.ADDRESS_SANCTIONED), Set.of(EscalationTarget.COMPLIANCE), Retryability.NON_RETRYABLE, List.of("address=" + address));
+        }
+        if ("mixer".equals(category) || "darknet".equals(category)) {
+            return RuleResult.block(RuleId.ADDRESS_RISK, Decision.COMPLIANCE_HOLD,
+                    Set.of(ReasonCode.ADDRESS_HIGH_RISK), Set.of(EscalationTarget.COMPLIANCE), Retryability.NON_RETRYABLE, List.of("address=" + address, "category=" + category));
+        }
+        if (risk.riskScore() >= 90) {
+            return RuleResult.block(RuleId.ADDRESS_RISK, Decision.FREEZE,
+                    Set.of(ReasonCode.ADDRESS_HIGH_RISK), Set.of(EscalationTarget.COMPLIANCE), Retryability.NON_RETRYABLE, List.of("score=" + risk.riskScore()));
+        }
+        if (risk.riskScore() >= 70) {
+            return RuleResult.block(RuleId.ADDRESS_RISK, Decision.COMPLIANCE_HOLD,
+                    Set.of(ReasonCode.ADDRESS_HIGH_RISK), Set.of(EscalationTarget.COMPLIANCE), Retryability.NON_RETRYABLE, List.of("score=" + risk.riskScore()));
+        }
+        return RuleResult.pass(RuleId.ADDRESS_RISK);
+    }
+
+    private RuleResult evaluateKycLimit(OrderRecord order, CustomerRecord customer, AssetNetworkRecord asset) {
+        if (customer == null || asset == null) {
+            return RuleResult.pass(RuleId.KYC_LIMIT);
+        }
+        BigDecimal valueUsd = switch (order.type()) {
+            case ON_RAMP -> order.fiatAmountUsd();
+            case OFF_RAMP -> valuationService.cryptoToUsd(order.asset(), max(order.quotedCryptoAmount(),
+                    order.deposit() == null ? null : order.deposit().observedAmount()));
+            case WITHDRAWAL -> valuationService.cryptoToUsd(order.asset(), order.amount());
+        };
+        if (valueUsd != null && valueUsd.compareTo(customer.monthlyLimitUsd()) > 0) {
+            return RuleResult.block(RuleId.KYC_LIMIT, Decision.COMPLIANCE_HOLD,
+                    Set.of(ReasonCode.KYC_LIMIT_EXCEEDED), Set.of(EscalationTarget.COMPLIANCE), Retryability.NON_RETRYABLE, List.of("valueUsd=" + valueUsd));
+        }
+        return RuleResult.pass(RuleId.KYC_LIMIT);
+    }
+
+    private RuleResult evaluateMinimumAmount(OrderRecord order, AssetNetworkRecord asset) {
+        if (asset == null) {
+            return RuleResult.pass(RuleId.MINIMUM_AMOUNT);
+        }
+        BigDecimal amount = switch (order.type()) {
+            case ON_RAMP -> order.quotedCryptoAmount();
+            case OFF_RAMP -> order.deposit() == null ? null : order.deposit().observedAmount();
+            case WITHDRAWAL -> order.amount();
+        };
+        if (amount == null) {
+            return RuleResult.pass(RuleId.MINIMUM_AMOUNT);
+        }
+        if (amount.compareTo(asset.minAmount()) < 0) {
+            return RuleResult.block(RuleId.MINIMUM_AMOUNT, Decision.OPS_REVIEW,
+                    Set.of(ReasonCode.BELOW_MIN_AMOUNT), Set.of(EscalationTarget.OPS), Retryability.NON_RETRYABLE,
+                    List.of("amount=" + amount, "min=" + asset.minAmount()));
+        }
+        return RuleResult.pass(RuleId.MINIMUM_AMOUNT);
+    }
+
+    private RuleResult evaluateFiatReceipt(OrderRecord order) {
+        if (order.type() != OrderType.ON_RAMP) {
+            return null;
+        }
+        String status = order.fiatStatus();
+        if (status == null) {
+            return RuleResult.block(RuleId.FIAT_RECEIPT, Decision.OPS_REVIEW,
+                    Set.of(ReasonCode.FIAT_STATUS_MISSING), Set.of(EscalationTarget.OPS), Retryability.NON_RETRYABLE, List.of("fiat status missing"));
+        }
+        return switch (status) {
+            case "received" -> RuleResult.pass(RuleId.FIAT_RECEIPT);
+            case "pending" -> RuleResult.block(RuleId.FIAT_RECEIPT, Decision.TEMPORARY_HOLD,
+                    Set.of(ReasonCode.FIAT_NOT_RECEIVED), Set.of(EscalationTarget.OPS), Retryability.RETRYABLE, List.of("fiat pending"));
+            case "failed" -> RuleResult.block(RuleId.FIAT_RECEIPT, Decision.REJECT,
+                    Set.of(ReasonCode.FIAT_PAYMENT_FAILED), Set.of(EscalationTarget.OPS), Retryability.NON_RETRYABLE, List.of("fiat failed"));
+            case "reversed" -> RuleResult.block(RuleId.FIAT_RECEIPT, Decision.REJECT,
+                    Set.of(ReasonCode.FIAT_PAYMENT_REVERSED), Set.of(EscalationTarget.OPS), Retryability.NON_RETRYABLE, List.of("fiat reversed"));
+            default -> RuleResult.block(RuleId.FIAT_RECEIPT, Decision.OPS_REVIEW,
+                    Set.of(ReasonCode.INVALID_ORDER_DATA), Set.of(EscalationTarget.OPS), Retryability.NON_RETRYABLE, List.of("fiat status=" + status));
+        };
+    }
+
+    private RuleResult evaluateOnRampConservation(OrderRecord order, AssetNetworkRecord asset) {
+        if (order.type() != OrderType.ON_RAMP || asset == null) {
+            return null;
+        }
+        BigDecimal confirmedFiatUsd = order.fiatAmountUsd();
+        BigDecimal plannedCryptoUsd = valuationService.cryptoToUsd(order.asset(), effectiveOnRampCryptoAmount(order));
+        if (plannedCryptoUsd != null && confirmedFiatUsd != null && plannedCryptoUsd.compareTo(confirmedFiatUsd) > 0) {
+            return RuleResult.block(RuleId.ON_RAMP_CONSERVATION, Decision.OPS_REVIEW,
+                    Set.of(ReasonCode.PAYOUT_EXCEEDS_CONFIRMED_VALUE), Set.of(EscalationTarget.OPS), Retryability.NON_RETRYABLE,
+                    List.of("plannedCryptoUsd=" + plannedCryptoUsd, "confirmedFiatUsd=" + confirmedFiatUsd));
+        }
+        return RuleResult.pass(RuleId.ON_RAMP_CONSERVATION);
+    }
+
+    private RuleResult evaluateConfirmation(OrderRecord order, AssetNetworkRecord asset) {
+        if (order.type() != OrderType.OFF_RAMP || asset == null) {
+            return null;
+        }
+        Integer confirmations = order.deposit() == null ? null : order.deposit().confirmations();
+        if (confirmations == null) {
+            return RuleResult.block(RuleId.CONFIRMATION, Decision.OPS_REVIEW,
+                    Set.of(ReasonCode.CONFIRMATIONS_MISSING), Set.of(EscalationTarget.OPS), Retryability.NON_RETRYABLE, List.of("confirmations missing"));
+        }
+        if (confirmations < asset.confirmationsRequired()) {
+            return RuleResult.block(RuleId.CONFIRMATION, Decision.TEMPORARY_HOLD,
+                    Set.of(ReasonCode.INSUFFICIENT_CONFIRMATIONS), Set.of(EscalationTarget.OPS), Retryability.RETRYABLE,
+                    List.of("confirmations=" + confirmations, "required=" + asset.confirmationsRequired()));
+        }
+        return RuleResult.pass(RuleId.CONFIRMATION);
+    }
+
+    private RuleResult evaluateAmountMatch(OrderRecord order) {
+        if (order.type() != OrderType.OFF_RAMP || order.deposit() == null) {
+            return null;
+        }
+        BigDecimal observed = order.deposit().observedAmount();
+        BigDecimal quoted = order.quotedCryptoAmount();
+        if (observed == null || quoted == null) {
+            return RuleResult.block(RuleId.AMOUNT_MATCH, Decision.OPS_REVIEW,
+                    Set.of(ReasonCode.REQUIRED_FACT_MISSING), Set.of(EscalationTarget.OPS), Retryability.NON_RETRYABLE, List.of("amount missing"));
+        }
+        if (observed.compareTo(quoted) != 0) {
+            return RuleResult.block(RuleId.AMOUNT_MATCH, Decision.OPS_REVIEW,
+                    Set.of(ReasonCode.AMOUNT_MISMATCH), Set.of(EscalationTarget.OPS), Retryability.NON_RETRYABLE,
+                    List.of("observed=" + observed, "quoted=" + quoted));
+        }
+        return RuleResult.pass(RuleId.AMOUNT_MATCH);
+    }
+
+    private RuleResult evaluatePayoutConservation(OrderRecord order, AssetNetworkRecord asset) {
+        if (order.type() != OrderType.OFF_RAMP || asset == null || order.deposit() == null || order.payout() == null) {
+            return null;
+        }
+        BigDecimal confirmedIncomingUsd = valuationService.cryptoToUsd(order.asset(), order.deposit().observedAmount());
+        BigDecimal payoutUsd = valuationService.fiatToUsd(order.payout().currency(), order.payout().amount());
+        if (confirmedIncomingUsd != null && payoutUsd != null && payoutUsd.compareTo(confirmedIncomingUsd) > 0) {
+            return RuleResult.block(RuleId.PAYOUT_CONSERVATION, Decision.OPS_REVIEW,
+                    Set.of(ReasonCode.PAYOUT_EXCEEDS_CONFIRMED_VALUE), Set.of(EscalationTarget.OPS), Retryability.NON_RETRYABLE,
+                    List.of("payoutUsd=" + payoutUsd, "confirmedIncomingUsd=" + confirmedIncomingUsd));
+        }
+        return RuleResult.pass(RuleId.PAYOUT_CONSERVATION);
+    }
+
+    private RuleResult evaluateNetworkMatch(OrderRecord order) {
+        if (order.type() != OrderType.OFF_RAMP || order.deposit() == null || order.deposit().network() == null) {
+            return null;
+        }
+        if (!order.network().equals(order.deposit().network())) {
+            return RuleResult.block(RuleId.NETWORK_MATCH, Decision.OPS_REVIEW,
+                    Set.of(ReasonCode.NETWORK_MISMATCH), Set.of(EscalationTarget.OPS), Retryability.NON_RETRYABLE,
+                    List.of("declared=" + order.network(), "observed=" + order.deposit().network()));
+        }
+        return RuleResult.pass(RuleId.NETWORK_MATCH);
+    }
+
+    private RuleResult evaluateBankOwnership(OrderRecord order, CustomerRecord customer) {
+        if (order.type() != OrderType.OFF_RAMP || order.payout() == null) {
+            return null;
+        }
+        if (order.payout().bankAccountName() == null || order.payout().bankAccountName().isBlank()) {
+            return RuleResult.block(RuleId.BANK_OWNERSHIP, Decision.OPS_REVIEW,
+                    Set.of(ReasonCode.BANK_ACCOUNT_NAME_MISSING), Set.of(EscalationTarget.OPS), Retryability.NON_RETRYABLE, List.of("bank name missing"));
+        }
+        if (customer != null && order.payout().bankAccountName().equals(customer.verifiedBankName())) {
+            return RuleResult.pass(RuleId.BANK_OWNERSHIP);
+        }
+        return RuleResult.block(RuleId.BANK_OWNERSHIP, Decision.REJECT,
+                Set.of(ReasonCode.BANK_NAME_MISMATCH), Set.of(EscalationTarget.COMPLIANCE), Retryability.NON_RETRYABLE,
+                List.of("bank=" + order.payout().bankAccountName(), "verified=" + (customer == null ? null : customer.verifiedBankName())));
+    }
+
+    private RuleResult evaluateQuoteExpiry(OrderRecord order, AssetNetworkRecord asset) {
+        if (order.type() == OrderType.WITHDRAWAL || order.quoteExpiresAt() == null || asset == null) {
+            return null;
+        }
+        if (clock.instant().isBefore(order.quoteExpiresAt())) {
+            return RuleResult.pass(RuleId.QUOTE_EXPIRY);
+        }
+        BigDecimal quoted = order.quotedCryptoAmount();
+        if (quoted == null) {
+            return RuleResult.block(RuleId.QUOTE_EXPIRY, Decision.OPS_REVIEW,
+                    Set.of(ReasonCode.QUOTE_MISSING), Set.of(EscalationTarget.OPS), Retryability.NON_RETRYABLE, List.of("quote missing"));
+        }
+        BigDecimal referenceRate = valuationService.cryptoToUsd(order.asset(), BigDecimal.ONE);
+        if (referenceRate == null) {
+            return RuleResult.block(RuleId.QUOTE_EXPIRY, Decision.TEMPORARY_HOLD,
+                    Set.of(ReasonCode.REFERENCE_RATE_MISSING), Set.of(EscalationTarget.OPS), Retryability.RETRYABLE, List.of("reference rate missing"));
+        }
+        BigDecimal newCryptoAmount;
+        if (order.type() == OrderType.ON_RAMP && order.fiatAmountUsd() != null) {
+            newCryptoAmount = order.fiatAmountUsd().divide(referenceRate, MathContext.DECIMAL128);
+        } else if (order.type() == OrderType.OFF_RAMP && order.deposit() != null && order.deposit().observedAmount() != null) {
+            newCryptoAmount = order.deposit().observedAmount();
+        } else {
+            return RuleResult.block(RuleId.QUOTE_EXPIRY, Decision.TEMPORARY_HOLD,
+                    Set.of(ReasonCode.REQUIRED_FACT_MISSING), Set.of(EscalationTarget.OPS), Retryability.RETRYABLE, List.of("missing quote inputs"));
+        }
+        BigDecimal slippage = newCryptoAmount.subtract(quoted, MathContext.DECIMAL128)
+                .abs()
+                .divide(quoted, MathContext.DECIMAL128);
+        if (slippage.compareTo(new BigDecimal("0.01")) > 0) {
+            return RuleResult.block(RuleId.QUOTE_EXPIRY, Decision.REQUOTE,
+                    Set.of(ReasonCode.QUOTE_SLIPPAGE_EXCEEDED), Set.of(EscalationTarget.OPS), Retryability.NON_RETRYABLE,
+                    List.of("slippage=" + slippage));
+        }
+        return RuleResult.pass(RuleId.QUOTE_EXPIRY);
+    }
+
+    private RuleResult evaluateTravelRule(OrderRecord order, AssetNetworkRecord asset) {
+        if (!isCryptoTransfer(order) || asset == null || order.counterparty() == null || !order.counterparty().isVasp()) {
+            return null;
+        }
+        BigDecimal transferAmount = switch (order.type()) {
+            case ON_RAMP -> order.quotedCryptoAmount();
+            case OFF_RAMP -> order.deposit() == null ? null : order.deposit().observedAmount();
+            case WITHDRAWAL -> order.amount();
+        };
+        BigDecimal usd = valuationService.cryptoToUsd(order.asset(), transferAmount);
+        if (usd == null || usd.compareTo(TRAVEL_RULE_THRESHOLD_USD) < 0) {
+            return null;
+        }
+        if (order.counterparty().beneficiaryInfo() == null) {
+            return RuleResult.block(RuleId.TRAVEL_RULE, Decision.COMPLIANCE_HOLD,
+                    Set.of(ReasonCode.TRAVEL_RULE_INFO_MISSING), Set.of(EscalationTarget.COMPLIANCE), Retryability.NON_RETRYABLE,
+                    List.of("travel rule info missing"));
+        }
+        return RuleResult.pass(RuleId.TRAVEL_RULE);
+    }
+
+    private RuleResult evaluateWithdrawalFunds(OrderRecord order) {
+        if (order.type() != OrderType.WITHDRAWAL) {
+            return null;
+        }
+        return RuleResult.block(RuleId.WITHDRAWAL_FUNDS, Decision.OPS_REVIEW,
+                Set.of(ReasonCode.WITHDRAWAL_FUNDS_UNVERIFIED), Set.of(EscalationTarget.OPS), Retryability.NON_RETRYABLE,
+                List.of("wallet funds unverified"));
+    }
+
+    private RuleResult evaluateVaspUnknownWarning(OrderRecord order, AssetNetworkRecord asset) {
+        if (!isCryptoTransfer(order) || asset == null || order.counterparty() == null || !order.counterparty().isVasp()) {
+            return null;
+        }
+        BigDecimal transferAmount = switch (order.type()) {
+            case ON_RAMP -> order.quotedCryptoAmount();
+            case OFF_RAMP -> order.deposit() == null ? null : order.deposit().observedAmount();
+            case WITHDRAWAL -> order.amount();
+        };
+        BigDecimal usd = valuationService.cryptoToUsd(order.asset(), transferAmount);
+        if (usd == null || usd.compareTo(TRAVEL_RULE_THRESHOLD_USD) < 0) {
+            return null;
+        }
+        String vaspName = order.counterparty().vaspName();
+        if (vaspName == null || vaspName.isBlank() || "unknown".equalsIgnoreCase(vaspName)) {
+            return RuleResult.warn(RuleId.VASP_UNKNOWN_WARNING,
+                    Set.of(ReasonCode.VASP_STATUS_UNKNOWN), Set.of(EscalationTarget.COMPLIANCE), List.of("vasp unknown"));
+        }
+        return RuleResult.pass(RuleId.VASP_UNKNOWN_WARNING);
+    }
+
+    private static boolean isCryptoTransfer(OrderRecord order) {
+        return order.type() == OrderType.ON_RAMP || order.type() == OrderType.OFF_RAMP || order.type() == OrderType.WITHDRAWAL;
+    }
+
+    private BigDecimal effectiveOnRampCryptoAmount(OrderRecord order) {
+        if (order.quoteExpiresAt() != null && clock.instant().isAfter(order.quoteExpiresAt())) {
+            BigDecimal rate = valuationService.cryptoToUsd(order.asset(), BigDecimal.ONE);
+            if (rate != null && order.fiatAmountUsd() != null) {
+                return order.fiatAmountUsd().divide(rate, MathContext.DECIMAL128);
+            }
+        }
+        return order.quotedCryptoAmount();
+    }
+
+    private static BigDecimal max(BigDecimal left, BigDecimal right) {
+        if (left == null) {
+            return right;
+        }
+        if (right == null) {
+            return left;
+        }
+        return left.compareTo(right) >= 0 ? left : right;
+    }
+}

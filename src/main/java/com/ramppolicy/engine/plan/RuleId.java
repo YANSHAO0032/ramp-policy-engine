@@ -1,0 +1,23 @@
+package com.ramppolicy.engine.plan;
+
+/**
+ * Identifiers for deterministic policy rules.
+ */
+public enum RuleId {
+    CUSTOMER_STATUS,
+    ASSET_SUPPORT,
+    ADDRESS_RISK,
+    KYC_LIMIT,
+    MINIMUM_AMOUNT,
+    FIAT_RECEIPT,
+    ON_RAMP_CONSERVATION,
+    CONFIRMATION,
+    AMOUNT_MATCH,
+    PAYOUT_CONSERVATION,
+    NETWORK_MATCH,
+    BANK_OWNERSHIP,
+    QUOTE_EXPIRY,
+    TRAVEL_RULE,
+    WITHDRAWAL_FUNDS,
+    VASP_UNKNOWN_WARNING
+}
