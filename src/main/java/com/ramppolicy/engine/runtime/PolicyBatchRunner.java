@@ -102,6 +102,14 @@ public final class PolicyBatchRunner {
         return runOrders(orders, outputDir);
     }
 
+    /**
+     * 逐单执行批处理，并落盘结果与审计轨迹。
+     *
+     * @param orders 待处理订单列表
+     * @param outputDir 输出目录
+     * @return 批处理结果
+     * @throws IOException 写文件失败时抛出
+     */
     private BatchRunResult runOrders(List<OrderRecord> orders, Path outputDir) throws IOException {
         List<OrderExecutionRecord> results = new ArrayList<>();
         List<String> auditLines = new ArrayList<>();
@@ -116,6 +124,15 @@ public final class PolicyBatchRunner {
         return new BatchRunResult(List.copyOf(results), List.copyOf(auditLines));
     }
 
+    /**
+     * 执行单笔订单的幂等占用、策略评估、动作执行与审计记录。
+     *
+     * @param order 当前订单
+     * @param intakeOwner 订单归属的 intake 标识
+     * @param auditLines 审计行收集器
+     * @return 订单执行记录
+     * @throws IOException 生成审计行失败时抛出
+     */
     private OrderExecutionRecord executeOne(OrderRecord order, String intakeOwner, List<String> auditLines) throws IOException {
         ClaimResult orderClaim = orderStore.claim(order.orderId(), intakeOwner);
         if (!orderClaim.accepted()) {
@@ -138,6 +155,17 @@ public final class PolicyBatchRunner {
         return record(order, decision, action.executed(), action.actionType(), auditLines);
     }
 
+    /**
+     * 将决策、解释和审计信息组装为最终执行记录。
+     *
+     * @param order 当前订单
+     * @param decision 已确定的策略决策
+     * @param actionExecuted 是否实际执行资金动作
+     * @param actionType 动作类型
+     * @param auditLines 审计行收集器
+     * @return 订单执行记录
+     * @throws IOException 序列化审计行失败时抛出
+     */
     private OrderExecutionRecord record(OrderRecord order, DeterministicDecision decision, boolean actionExecuted, String actionType, List<String> auditLines) throws IOException {
         ExplanationResult explanation = explanationProvider.explain(new ExplanationRequest(order.orderId(), decision));
         OrderExecutionRecord record = new OrderExecutionRecord(
@@ -163,6 +191,13 @@ public final class PolicyBatchRunner {
         return record;
     }
 
+    /**
+     * 为重复订单构造固定的拒绝/复核决策。
+     *
+     * @param orderId 订单标识
+     * @param reasonCode 触发重复的原因码
+     * @return 重复订单决策
+     */
     private DeterministicDecision duplicateDecision(String orderId, ReasonCode reasonCode) {
         return new DeterministicDecision(
                 orderId,
@@ -175,6 +210,13 @@ public final class PolicyBatchRunner {
                 clock.instant());
     }
 
+    /**
+     * 在原始决策基础上补充重复交易原因。
+     *
+     * @param order 当前订单
+     * @param base 原始决策
+     * @return 补充重复交易后的决策
+     */
     private DeterministicDecision duplicateTransactionDecision(OrderRecord order, DeterministicDecision base) {
         EnumSet<ReasonCode> reasons = base.reasonCodes().isEmpty()
                 ? EnumSet.noneOf(ReasonCode.class)

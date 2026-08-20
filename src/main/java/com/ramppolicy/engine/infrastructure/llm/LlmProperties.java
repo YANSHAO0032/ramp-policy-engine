@@ -53,6 +53,18 @@ public record LlmProperties(
                 env.getOrDefault("LLM_RECORDED_FILE", DEFAULT_RECORDED_FILE));
     }
 
+    /**
+     * 将环境变量值解析为解释器类型。
+     *
+     * @param value 环境变量中的解释器名称
+     * @return 解析后的解释器类型
+     */
+    /**
+     * 将环境变量值解析为解释器类型。
+     *
+     * @param value 环境变量中的解释器名称
+     * @return 解析后的解释器类型
+     */
     private static ExplanationProviderType parseProvider(String value) {
         return switch (value.toLowerCase(Locale.ROOT)) {
             case "stub" -> ExplanationProviderType.STUB;
@@ -62,11 +74,39 @@ public record LlmProperties(
         };
     }
 
+    /**
+     * 从环境变量读取整数配置。
+     *
+     * @param env 环境变量映射
+     * @param key 配置键
+     * @param defaultValue 默认值
+     * @return 解析后的整数值
+     */
+    /**
+     * 从环境变量读取整数配置。
+     *
+     * @param env 环境变量映射
+     * @param key 配置键
+     * @param defaultValue 默认值
+     * @return 解析后的整数值
+     */
     private static int parseInt(Map<String, String> env, String key, int defaultValue) {
         String value = env.get(key);
         return value == null || value.isBlank() ? defaultValue : Integer.parseInt(value);
     }
 
+    /**
+     * 将空白字符串归一化为 null。
+     *
+     * @param value 原始字符串
+     * @return 空白时返回 null，否则返回原值
+     */
+    /**
+     * 将空白字符串归一化为 null。
+     *
+     * @param value 原始字符串
+     * @return 空白时返回 null，否则返回原值
+     */
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value;
     }

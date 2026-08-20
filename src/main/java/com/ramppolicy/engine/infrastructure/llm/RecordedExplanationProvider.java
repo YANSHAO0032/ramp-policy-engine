@@ -41,6 +41,12 @@ public final class RecordedExplanationProvider implements ExplanationProvider {
         return new ExplanationResult(fallbackResult.text(), ExplanationProviderType.RECORDED, true, "RECORDED_MISS");
     }
 
+    /**
+     * 生成录制解释的查找键。
+     *
+     * @param request 解释请求
+     * @return 决策与原因码组合键
+     */
     private static String key(ExplanationRequest request) {
         String reasons = request.decision().reasonCodes().stream()
                 .sorted(Comparator.comparingInt(ReasonCode::ordinal))

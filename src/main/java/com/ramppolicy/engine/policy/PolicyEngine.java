@@ -96,6 +96,15 @@ public final class PolicyEngine {
                 clock.instant());
     }
 
+    /**
+     * 按规则标识调用对应的规则检查逻辑。
+     *
+     * @param ruleId 规则标识
+     * @param order 当前订单
+     * @param customer 订单关联客户
+     * @param asset 订单关联资产与网络配置
+     * @return 单条规则的结果
+     */
     private RuleResult evaluatePlannedRule(
             RuleId ruleId,
             OrderRecord order,
@@ -121,6 +130,12 @@ public final class PolicyEngine {
         };
     }
 
+    /**
+     * 校验客户状态是否仍然可处理。
+     *
+     * @param customer 客户事实
+     * @return 客户状态规则结果
+     */
     private RuleResult evaluateCustomerStatus(CustomerRecord customer) {
         if (customer == null) {
             return RuleResult.block(RuleId.CUSTOMER_STATUS, Decision.OPS_REVIEW,
@@ -133,6 +148,13 @@ public final class PolicyEngine {
         return RuleResult.pass(RuleId.CUSTOMER_STATUS);
     }
 
+    /**
+     * 校验订单声明的资产和网络是否受支持。
+     *
+     * @param order 当前订单
+     * @param asset 资产网络配置
+     * @return 资产支持规则结果
+     */
     private RuleResult evaluateAssetSupport(OrderRecord order, AssetNetworkRecord asset) {
         if (asset == null) {
             return RuleResult.block(RuleId.ASSET_SUPPORT, Decision.OPS_REVIEW,
@@ -142,6 +164,12 @@ public final class PolicyEngine {
         return RuleResult.pass(RuleId.ASSET_SUPPORT);
     }
 
+    /**
+     * 校验订单目标地址或来源地址的风险等级。
+     *
+     * @param order 当前订单
+     * @return 地址风险规则结果
+     */
     private RuleResult evaluateAddressRisk(OrderRecord order) {
         String address = switch (order.type()) {
             case ON_RAMP, WITHDRAWAL -> order.destinationAddress();
@@ -177,6 +205,14 @@ public final class PolicyEngine {
         return RuleResult.pass(RuleId.ADDRESS_RISK);
     }
 
+    /**
+     * 校验单笔订单对应的 KYC 限额。
+     *
+     * @param order 当前订单
+     * @param customer 订单关联客户
+     * @param asset 资产网络配置
+     * @return KYC 限额规则结果
+     */
     private RuleResult evaluateKycLimit(OrderRecord order, CustomerRecord customer, AssetNetworkRecord asset) {
         if (customer == null || asset == null) {
             return RuleResult.pass(RuleId.KYC_LIMIT);
@@ -194,6 +230,13 @@ public final class PolicyEngine {
         return RuleResult.pass(RuleId.KYC_LIMIT);
     }
 
+    /**
+     * 校验订单金额是否达到资产的最小要求。
+     *
+     * @param order 当前订单
+     * @param asset 资产网络配置
+     * @return 最小金额规则结果
+     */
     private RuleResult evaluateMinimumAmount(OrderRecord order, AssetNetworkRecord asset) {
         if (asset == null) {
             return RuleResult.pass(RuleId.MINIMUM_AMOUNT);
@@ -214,6 +257,12 @@ public final class PolicyEngine {
         return RuleResult.pass(RuleId.MINIMUM_AMOUNT);
     }
 
+    /**
+     * 校验法币入账状态。
+     *
+     * @param order 当前订单
+     * @return 法币入账规则结果，非 on-ramp 时返回 null
+     */
     private RuleResult evaluateFiatReceipt(OrderRecord order) {
         if (order.type() != OrderType.ON_RAMP) {
             return null;
@@ -236,6 +285,13 @@ public final class PolicyEngine {
         };
     }
 
+    /**
+     * 校验法币入金与预计出币的金额守恒。
+     *
+     * @param order 当前订单
+     * @param asset 资产网络配置
+     * @return 入金守恒规则结果
+     */
     private RuleResult evaluateOnRampConservation(OrderRecord order, AssetNetworkRecord asset) {
         if (order.type() != OrderType.ON_RAMP || asset == null) {
             return null;
@@ -250,6 +306,13 @@ public final class PolicyEngine {
         return RuleResult.pass(RuleId.ON_RAMP_CONSERVATION);
     }
 
+    /**
+     * 校验链上确认数是否达到要求。
+     *
+     * @param order 当前订单
+     * @param asset 资产网络配置
+     * @return 确认数规则结果，非 off-ramp 时返回 null
+     */
     private RuleResult evaluateConfirmation(OrderRecord order, AssetNetworkRecord asset) {
         if (order.type() != OrderType.OFF_RAMP || asset == null) {
             return null;
@@ -267,6 +330,12 @@ public final class PolicyEngine {
         return RuleResult.pass(RuleId.CONFIRMATION);
     }
 
+    /**
+     * 校验到账数量与报价数量是否一致。
+     *
+     * @param order 当前订单
+     * @return 数量一致性规则结果，非 off-ramp 时返回 null
+     */
     private RuleResult evaluateAmountMatch(OrderRecord order) {
         if (order.type() != OrderType.OFF_RAMP || order.deposit() == null) {
             return null;
@@ -285,6 +354,13 @@ public final class PolicyEngine {
         return RuleResult.pass(RuleId.AMOUNT_MATCH);
     }
 
+    /**
+     * 校验法币出款是否超过已确认入账价值。
+     *
+     * @param order 当前订单
+     * @param asset 资产网络配置
+     * @return 出款守恒规则结果
+     */
     private RuleResult evaluatePayoutConservation(OrderRecord order, AssetNetworkRecord asset) {
         if (order.type() != OrderType.OFF_RAMP || asset == null || order.deposit() == null || order.payout() == null) {
             return null;
@@ -299,6 +375,12 @@ public final class PolicyEngine {
         return RuleResult.pass(RuleId.PAYOUT_CONSERVATION);
     }
 
+    /**
+     * 校验声明网络与实际到账网络是否一致。
+     *
+     * @param order 当前订单
+     * @return 网络一致性规则结果
+     */
     private RuleResult evaluateNetworkMatch(OrderRecord order) {
         if (order.type() != OrderType.OFF_RAMP || order.deposit() == null || order.deposit().network() == null) {
             return null;
@@ -311,6 +393,13 @@ public final class PolicyEngine {
         return RuleResult.pass(RuleId.NETWORK_MATCH);
     }
 
+    /**
+     * 校验法币出款账户户名是否与客户实名一致。
+     *
+     * @param order 当前订单
+     * @param customer 订单关联客户
+     * @return 银行户名规则结果
+     */
     private RuleResult evaluateBankOwnership(OrderRecord order, CustomerRecord customer) {
         if (order.type() != OrderType.OFF_RAMP || order.payout() == null) {
             return null;
@@ -327,6 +416,13 @@ public final class PolicyEngine {
                 List.of("bank=" + order.payout().bankAccountName(), "verified=" + (customer == null ? null : customer.verifiedBankName())));
     }
 
+    /**
+     * 校验报价是否过期，以及过期后滑点是否仍在容忍范围内。
+     *
+     * @param order 当前订单
+     * @param asset 资产网络配置
+     * @return 报价过期规则结果
+     */
     private RuleResult evaluateQuoteExpiry(OrderRecord order, AssetNetworkRecord asset) {
         if (order.type() == OrderType.WITHDRAWAL || order.quoteExpiresAt() == null || asset == null) {
             return null;
@@ -364,6 +460,13 @@ public final class PolicyEngine {
         return RuleResult.pass(RuleId.QUOTE_EXPIRY);
     }
 
+    /**
+     * 校验大额跨机构转移是否满足 Travel Rule 要求。
+     *
+     * @param order 当前订单
+     * @param asset 资产网络配置
+     * @return Travel Rule 规则结果
+     */
     private RuleResult evaluateTravelRule(OrderRecord order, AssetNetworkRecord asset) {
         if (!isCryptoTransfer(order) || asset == null || order.counterparty() == null || !order.counterparty().isVasp()) {
             return null;
@@ -385,6 +488,12 @@ public final class PolicyEngine {
         return RuleResult.pass(RuleId.TRAVEL_RULE);
     }
 
+    /**
+     * 校验提币资金是否已被系统确认。
+     *
+     * @param order 当前订单
+     * @return 提币资金规则结果
+     */
     private RuleResult evaluateWithdrawalFunds(OrderRecord order) {
         if (order.type() != OrderType.WITHDRAWAL) {
             return null;
@@ -394,6 +503,13 @@ public final class PolicyEngine {
                 List.of("wallet funds unverified"));
     }
 
+    /**
+     * 对未知 VASP 名称给出提示性告警。
+     *
+     * @param order 当前订单
+     * @param asset 资产网络配置
+     * @return VASP 告警规则结果
+     */
     private RuleResult evaluateVaspUnknownWarning(OrderRecord order, AssetNetworkRecord asset) {
         if (!isCryptoTransfer(order) || asset == null || order.counterparty() == null || !order.counterparty().isVasp()) {
             return null;
@@ -415,10 +531,28 @@ public final class PolicyEngine {
         return RuleResult.pass(RuleId.VASP_UNKNOWN_WARNING);
     }
 
+    /**
+     * 判断订单是否属于加密资产转移类订单。
+     *
+     * @param order 当前订单
+     * @return 是否为加密资产转移
+     */
     private static boolean isCryptoTransfer(OrderRecord order) {
         return order.type() == OrderType.ON_RAMP || order.type() == OrderType.OFF_RAMP || order.type() == OrderType.WITHDRAWAL;
     }
 
+    /**
+     * 计算 on-ramp 在报价过期后的有效加密资产数量。
+     *
+     * @param order 当前订单
+     * @return 有效加密资产数量
+     */
+    /**
+     * 计算 on-ramp 在报价过期后的有效加密资产数量。
+     *
+     * @param order 当前订单
+     * @return 有效加密资产数量
+     */
     private BigDecimal effectiveOnRampCryptoAmount(OrderRecord order) {
         if (order.quoteExpiresAt() != null && clock.instant().isAfter(order.quoteExpiresAt())) {
             BigDecimal rate = valuationService.cryptoToUsd(order.asset(), BigDecimal.ONE);
@@ -429,6 +563,20 @@ public final class PolicyEngine {
         return order.quotedCryptoAmount();
     }
 
+    /**
+     * 取两个金额中的较大值，空值按另一个值处理。
+     *
+     * @param left 左侧金额
+     * @param right 右侧金额
+     * @return 较大金额
+     */
+    /**
+     * 取两个金额中的较大值，空值按另一个值处理。
+     *
+     * @param left 左侧金额
+     * @param right 右侧金额
+     * @return 较大金额
+     */
     private static BigDecimal max(BigDecimal left, BigDecimal right) {
         if (left == null) {
             return right;

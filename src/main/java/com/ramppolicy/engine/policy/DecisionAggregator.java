@@ -54,10 +54,23 @@ public final class DecisionAggregator {
         return new AggregatedDecision(topDecision, reasons, escalations, retryability, evidence);
     }
 
+    /**
+     * 在两个重试语义中选择更严格的一个。
+     *
+     * @param left 左侧语义
+     * @param right 右侧语义
+     * @return 更严格的重试语义
+     */
     private static Retryability stricter(Retryability left, Retryability right) {
         return retryPriority(right) > retryPriority(left) ? right : left;
     }
 
+    /**
+     * 将重试语义映射为比较优先级。
+     *
+     * @param retryability 重试语义
+     * @return 数值优先级
+     */
     private static int retryPriority(Retryability retryability) {
         return switch (retryability) {
             case NOT_APPLICABLE -> 1;
@@ -66,6 +79,13 @@ public final class DecisionAggregator {
         };
     }
 
+    /**
+     * 在两个决策中选择优先级更高的那个。
+     *
+     * @param left 左侧决策
+     * @param right 右侧决策
+     * @return 优先级更高的决策
+     */
     private static Decision higherPriority(Decision left, Decision right) {
         return PRIORITY.get(right) > PRIORITY.get(left) ? right : left;
     }

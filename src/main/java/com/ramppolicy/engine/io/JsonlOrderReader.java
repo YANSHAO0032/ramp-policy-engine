@@ -119,10 +119,23 @@ public final class JsonlOrderReader {
         };
     }
 
+    /**
+     * 将可空 JSON 数值节点安全转换为 BigDecimal。
+     *
+     * @param node JSON 节点
+     * @return 数值或 null
+     */
     private static BigDecimal decimal(JsonNode node) {
         return node == null || node.isMissingNode() || node.isNull() ? null : node.decimalValue();
     }
 
+    /**
+     * 读取必填文本字段，缺失时直接报错。
+     *
+     * @param node JSON 节点
+     * @param fieldName 字段名
+     * @return 字段文本值
+     */
     private static String requiredText(JsonNode node, String fieldName) {
         JsonNode field = node.path(fieldName);
         if (field.isMissingNode() || field.isNull()) {
@@ -131,6 +144,12 @@ public final class JsonlOrderReader {
         return field.asText();
     }
 
+    /**
+     * 将 JSON 中的订单类型字符串映射为枚举值。
+     *
+     * @param value 原始类型字符串
+     * @return 订单类型
+     */
     private static OrderType parseOrderType(String value) {
         return switch (value) {
             case "on_ramp" -> OrderType.ON_RAMP;

@@ -27,6 +27,12 @@ public final class StubExplanationProvider implements ExplanationProvider {
         return new ExplanationResult(messageFor(request.decision().decision()) + suffix, ExplanationProviderType.STUB, false, null);
     }
 
+    /**
+     * 将确定性决策映射为离线解释文案。
+     *
+     * @param decision 决策枚举
+     * @return 对应的中文说明
+     */
     private static String messageFor(Decision decision) {
         return switch (decision) {
             case COMPLETE -> "COMPLETE：所有强制规则和执行门都已通过。";

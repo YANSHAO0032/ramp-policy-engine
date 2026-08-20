@@ -184,6 +184,13 @@ public final class EvaluationSupport {
         }
     }
 
+    /**
+     * 从 golden 订单文件中定位指定订单对应的原始 JSON 行。
+     *
+     * @param orderId 订单标识
+     * @return 原始 JSON 行
+     * @throws IOException 读取文件失败时抛出
+     */
     private static String goldenLine(String orderId) throws IOException {
         return goldenLines().stream()
                 .filter(line -> line.contains("\"order_id\": \"" + orderId + "\""))
@@ -227,6 +234,16 @@ public final class EvaluationSupport {
         return copyFacts(base, base.customers(), base.assets(), base.addressRisks(), rates);
     }
 
+    /**
+     * 复制 Demo 事实并替换指定维度，避免修改原始基线数据。
+     *
+     * @param base 原始事实
+     * @param customers 客户事实
+     * @param assets 资产事实
+     * @param addressRisks 地址风险事实
+     * @param referenceRates 汇率事实
+     * @return 新的 Demo 事实集合
+     */
     private static DemoFacts copyFacts(
             DemoFacts base,
             Map<String, CustomerRecord> customers,
@@ -240,6 +257,18 @@ public final class EvaluationSupport {
                 Map.copyOf(referenceRates));
     }
 
+    /**
+     * 按随机种子为单笔订单生成一个带少量扰动的事实变体。
+     *
+     * @param base 基础事实
+     * @param random 伪随机源
+     * @param order 当前订单
+     * @param asset 资产代码
+     * @param network 网络代码
+     * @param address 地址
+     * @param customerId 客户标识
+     * @return 变体事实
+     */
     private static DemoFacts randomFactsVariant(DemoFacts base, java.util.SplittableRandom random, OrderRecord order, String asset, String network, String address, String customerId) {
         DemoFacts facts = base;
         if (random.nextInt(10) == 0) {
@@ -260,14 +289,67 @@ public final class EvaluationSupport {
         return facts;
     }
 
+    /**
+     * 构造一笔 on-ramp 测评订单。
+     *
+     * @param orderId 订单标识
+     * @param customerId 客户标识
+     * @param asset 资产代码
+     * @param network 网络代码
+     * @param fiatAmountUsd 法币金额
+     * @param quotedCryptoAmount 报价加密金额
+     * @param quoteExpiresAt 报价过期时间
+     * @param destinationAddress 目标地址
+     * @param note 客户备注
+     * @return on-ramp 订单
+     */
     private static OrderRecord onRamp(String orderId, String customerId, String asset, String network, BigDecimal fiatAmountUsd, BigDecimal quotedCryptoAmount, Instant quoteExpiresAt, String destinationAddress, String note) {
         return new OrderRecord(orderId, OrderType.ON_RAMP, customerId, asset, network, fiatAmountUsd, quotedCryptoAmount, quoteExpiresAt, "received", destinationAddress, null, null, null, null, note);
     }
 
+    /**
+     * 构造一笔 off-ramp 测评订单。
+     *
+     * @param orderId 订单标识
+     * @param customerId 客户标识
+     * @param asset 资产代码
+     * @param network 网络代码
+     * @param quotedCryptoAmount 报价加密金额
+     * @param quoteExpiresAt 报价过期时间
+     * @param fromAddress 入账地址
+     * @param confirmations 确认数
+     * @param observedAmount 实际到账数量
+     * @param bankAccountName 银行户名
+     * @param currency 法币币种
+     * @param payoutAmount 出款金额
+     * @param note 客户备注
+     * @return off-ramp 订单
+     */
     private static OrderRecord offRamp(String orderId, String customerId, String asset, String network, BigDecimal quotedCryptoAmount, Instant quoteExpiresAt, String fromAddress, Integer confirmations, BigDecimal observedAmount, String bankAccountName, String currency, BigDecimal payoutAmount, String note) {
         return new OrderRecord(orderId, OrderType.OFF_RAMP, customerId, asset, network, null, quotedCryptoAmount, quoteExpiresAt, null, null, new com.ramppolicy.engine.domain.DepositRecord("tx-" + orderId, fromAddress, confirmations, observedAmount, network), new PayoutRecord(bankAccountName, currency, payoutAmount), null, null, note);
     }
 
+    /**
+     * 构造一笔带对手方信息的 off-ramp 测评订单。
+     *
+     * @param orderId 订单标识
+     * @param customerId 客户标识
+     * @param asset 资产代码
+     * @param network 网络代码
+     * @param quotedCryptoAmount 报价加密金额
+     * @param quoteExpiresAt 报价过期时间
+     * @param fromAddress 入账地址
+     * @param confirmations 确认数
+     * @param observedAmount 实际到账数量
+     * @param bankAccountName 银行户名
+     * @param currency 法币币种
+     * @param payoutAmount 出款金额
+     * @param isVasp 是否为 VASP
+     * @param vaspName VASP 名称
+     * @param beneficiaryInfo 受益人信息
+     * @param note 客户备注
+     * @return off-ramp 订单
+     */
     private static OrderRecord offRampWithCounterparty(
             String orderId,
             String customerId,
@@ -303,10 +385,37 @@ public final class EvaluationSupport {
                 note);
     }
 
+    /**
+     * 构造一笔 withdrawal 测评订单。
+     *
+     * @param orderId 订单标识
+     * @param customerId 客户标识
+     * @param asset 资产代码
+     * @param network 网络代码
+     * @param amount 提币数量
+     * @param destinationAddress 提币地址
+     * @param isVasp 是否为 VASP
+     * @param vaspName VASP 名称
+     * @param beneficiaryInfo 受益人信息
+     * @param note 客户备注
+     * @return withdrawal 订单
+     */
     private static OrderRecord withdrawal(String orderId, String customerId, String asset, String network, BigDecimal amount, String destinationAddress, boolean isVasp, String vaspName, Object beneficiaryInfo, String note) {
         return new OrderRecord(orderId, OrderType.WITHDRAWAL, customerId, asset, network, null, null, null, null, destinationAddress, null, null, amount, new com.ramppolicy.engine.domain.CounterpartyRecord(isVasp, vaspName, beneficiaryInfo), note);
     }
 
+    /**
+     * 构造一条带期望值的评测场景。
+     *
+     * @param id 场景标识
+     * @param order 订单
+     * @param facts 事实集
+     * @param expectedDecision 期望决策
+     * @param expectedReasonCodes 期望原因码
+     * @param expectedActionExecuted 期望是否执行动作
+     * @param tags 场景标签
+     * @return 评测场景
+     */
     private static EvaluationScenario expected(
             String id,
             OrderRecord order,
@@ -318,10 +427,22 @@ public final class EvaluationSupport {
         return EvaluationScenario.expected(id, order, facts, expectedDecision, expectedReasonCodes, expectedActionExecuted, tags);
     }
 
+    /**
+     * 将字符串转换为 BigDecimal，便于测试数据书写。
+     *
+     * @param value 数值字符串
+     * @return 金额对象
+     */
     private static BigDecimal bd(String value) {
         return new BigDecimal(value);
     }
 
+    /**
+     * 将字符串转换为 Instant，便于测试数据书写。
+     *
+     * @param value ISO-8601 时间字符串
+     * @return 时间点
+     */
     private static Instant instant(String value) {
         return Instant.parse(value);
     }

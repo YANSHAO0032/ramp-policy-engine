@@ -63,6 +63,22 @@ public record DemoFacts(
                 readReferenceRates(prefix + "/reference_rates.json", objectMapper));
     }
 
+    /**
+     * 从文件系统中的客户文件读取客户事实。
+     *
+     * @param path 客户文件路径
+     * @param objectMapper JSON 解析器
+     * @return 按客户标识索引的客户事实
+     * @throws IOException 文件缺失或格式错误时抛出
+     */
+    /**
+     * 从文件系统中的客户文件读取客户事实。
+     *
+     * @param path 客户文件路径
+     * @param objectMapper JSON 解析器
+     * @return 按客户标识索引的客户事实
+     * @throws IOException 文件缺失或格式错误时抛出
+     */
     private static Map<String, CustomerRecord> readCustomers(Path path, ObjectMapper objectMapper) throws IOException {
         JsonNode root = objectMapper.readTree(Files.readString(path));
         Map<String, CustomerRecord> customers = new LinkedHashMap<>();
@@ -79,6 +95,22 @@ public record DemoFacts(
         return Map.copyOf(customers);
     }
 
+    /**
+     * 从文件系统中的资产文件读取资产网络事实。
+     *
+     * @param path 资产文件路径
+     * @param objectMapper JSON 解析器
+     * @return 按 asset/network 索引的资产网络事实
+     * @throws IOException 文件缺失或格式错误时抛出
+     */
+    /**
+     * 从文件系统中的资产文件读取资产网络事实。
+     *
+     * @param path 资产文件路径
+     * @param objectMapper JSON 解析器
+     * @return 按 asset/network 索引的资产网络事实
+     * @throws IOException 文件缺失或格式错误时抛出
+     */
     private static Map<String, AssetNetworkRecord> readAssets(Path path, ObjectMapper objectMapper) throws IOException {
         JsonNode root = objectMapper.readTree(Files.readString(path));
         Map<String, AssetNetworkRecord> assets = new LinkedHashMap<>();
@@ -95,6 +127,22 @@ public record DemoFacts(
         return Map.copyOf(assets);
     }
 
+    /**
+     * 从文件系统中的地址风险文件读取风险事实。
+     *
+     * @param path 风险文件路径
+     * @param objectMapper JSON 解析器
+     * @return 按地址索引的风险事实
+     * @throws IOException 文件缺失或格式错误时抛出
+     */
+    /**
+     * 从文件系统中的地址风险文件读取风险事实。
+     *
+     * @param path 风险文件路径
+     * @param objectMapper JSON 解析器
+     * @return 按地址索引的风险事实
+     * @throws IOException 文件缺失或格式错误时抛出
+     */
     private static Map<String, AddressRiskRecord> readAddressRisks(Path path, ObjectMapper objectMapper) throws IOException {
         JsonNode root = objectMapper.readTree(Files.readString(path));
         Map<String, AddressRiskRecord> risks = new LinkedHashMap<>();
@@ -104,6 +152,22 @@ public record DemoFacts(
         return Map.copyOf(risks);
     }
 
+    /**
+     * 从文件系统中的汇率文件读取参考汇率。
+     *
+     * @param path 汇率文件路径
+     * @param objectMapper JSON 解析器
+     * @return 按交易对索引的参考汇率
+     * @throws IOException 文件缺失或格式错误时抛出
+     */
+    /**
+     * 从文件系统中的汇率文件读取参考汇率。
+     *
+     * @param path 汇率文件路径
+     * @param objectMapper JSON 解析器
+     * @return 按交易对索引的参考汇率
+     * @throws IOException 文件缺失或格式错误时抛出
+     */
     private static Map<String, BigDecimal> readReferenceRates(Path path, ObjectMapper objectMapper) throws IOException {
         JsonNode root = objectMapper.readTree(Files.readString(path));
         Map<String, BigDecimal> rates = new LinkedHashMap<>();
@@ -111,6 +175,22 @@ public record DemoFacts(
         return Map.copyOf(rates);
     }
 
+    /**
+     * 从类路径资源读取客户事实。
+     *
+     * @param resource 类路径资源路径
+     * @param objectMapper JSON 解析器
+     * @return 按客户标识索引的客户事实
+     * @throws IOException 资源缺失或格式错误时抛出
+     */
+    /**
+     * 从类路径资源读取客户事实。
+     *
+     * @param resource 类路径资源路径
+     * @param objectMapper JSON 解析器
+     * @return 按客户标识索引的客户事实
+     * @throws IOException 资源缺失或格式错误时抛出
+     */
     private static Map<String, CustomerRecord> readCustomers(String resource, ObjectMapper objectMapper) throws IOException {
         JsonNode root = readResourceTree(resource, objectMapper);
         Map<String, CustomerRecord> customers = new LinkedHashMap<>();
@@ -127,6 +207,22 @@ public record DemoFacts(
         return Map.copyOf(customers);
     }
 
+    /**
+     * 从类路径资源读取资产网络事实。
+     *
+     * @param resource 类路径资源路径
+     * @param objectMapper JSON 解析器
+     * @return 按 asset/network 索引的资产网络事实
+     * @throws IOException 资源缺失或格式错误时抛出
+     */
+    /**
+     * 从类路径资源读取资产网络事实。
+     *
+     * @param resource 类路径资源路径
+     * @param objectMapper JSON 解析器
+     * @return 按 asset/network 索引的资产网络事实
+     * @throws IOException 资源缺失或格式错误时抛出
+     */
     private static Map<String, AssetNetworkRecord> readAssets(String resource, ObjectMapper objectMapper) throws IOException {
         JsonNode root = readResourceTree(resource, objectMapper);
         Map<String, AssetNetworkRecord> assets = new LinkedHashMap<>();
@@ -143,6 +239,22 @@ public record DemoFacts(
         return Map.copyOf(assets);
     }
 
+    /**
+     * 从类路径资源读取地址风险事实。
+     *
+     * @param resource 类路径资源路径
+     * @param objectMapper JSON 解析器
+     * @return 按地址索引的风险事实
+     * @throws IOException 资源缺失或格式错误时抛出
+     */
+    /**
+     * 从类路径资源读取地址风险事实。
+     *
+     * @param resource 类路径资源路径
+     * @param objectMapper JSON 解析器
+     * @return 按地址索引的风险事实
+     * @throws IOException 资源缺失或格式错误时抛出
+     */
     private static Map<String, AddressRiskRecord> readAddressRisks(String resource, ObjectMapper objectMapper) throws IOException {
         JsonNode root = readResourceTree(resource, objectMapper);
         Map<String, AddressRiskRecord> risks = new LinkedHashMap<>();
@@ -152,6 +264,22 @@ public record DemoFacts(
         return Map.copyOf(risks);
     }
 
+    /**
+     * 从类路径资源读取参考汇率。
+     *
+     * @param resource 类路径资源路径
+     * @param objectMapper JSON 解析器
+     * @return 按交易对索引的参考汇率
+     * @throws IOException 资源缺失或格式错误时抛出
+     */
+    /**
+     * 从类路径资源读取参考汇率。
+     *
+     * @param resource 类路径资源路径
+     * @param objectMapper JSON 解析器
+     * @return 按交易对索引的参考汇率
+     * @throws IOException 资源缺失或格式错误时抛出
+     */
     private static Map<String, BigDecimal> readReferenceRates(String resource, ObjectMapper objectMapper) throws IOException {
         JsonNode root = readResourceTree(resource, objectMapper);
         Map<String, BigDecimal> rates = new LinkedHashMap<>();
@@ -159,6 +287,22 @@ public record DemoFacts(
         return Map.copyOf(rates);
     }
 
+    /**
+     * 读取类路径资源并解析为 JSON 树。
+     *
+     * @param resource 类路径资源路径
+     * @param objectMapper JSON 解析器
+     * @return 解析后的 JSON 树
+     * @throws IOException 资源缺失或解析失败时抛出
+     */
+    /**
+     * 读取类路径资源并解析为 JSON 树。
+     *
+     * @param resource 类路径资源路径
+     * @param objectMapper JSON 解析器
+     * @return 解析后的 JSON 树
+     * @throws IOException 资源缺失或解析失败时抛出
+     */
     private static JsonNode readResourceTree(String resource, ObjectMapper objectMapper) throws IOException {
         ClassLoader classLoader = DemoFacts.class.getClassLoader();
         try (InputStream inputStream = classLoader.getResourceAsStream(resource)) {
@@ -180,6 +324,20 @@ public record DemoFacts(
         return assets.get(assetKey(asset, network));
     }
 
+    /**
+     * 生成资产与网络的联合索引键。
+     *
+     * @param asset 资产代码
+     * @param network 网络代码
+     * @return 联合索引键
+     */
+    /**
+     * 生成资产与网络的联合索引键。
+     *
+     * @param asset 资产代码
+     * @param network 网络代码
+     * @return 联合索引键
+     */
     private static String assetKey(String asset, String network) {
         return asset + "/" + network;
     }

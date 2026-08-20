@@ -20,6 +20,11 @@ public final class StaticRulePlanResolver implements RulePlanResolver {
         };
     }
 
+    /**
+     * 组装 on-ramp 订单的规则计划。
+     *
+     * @return on-ramp 规则计划
+     */
     private static RulePlan onRamp() {
         return new RulePlan(
                 OrderType.ON_RAMP,
@@ -45,6 +50,11 @@ public final class StaticRulePlanResolver implements RulePlanResolver {
                         FactRequirement.COUNTERPARTY_VASP));
     }
 
+    /**
+     * 组装 off-ramp 订单的规则计划。
+     *
+     * @return off-ramp 规则计划
+     */
     private static RulePlan offRamp() {
         return new RulePlan(
                 OrderType.OFF_RAMP,
@@ -75,6 +85,11 @@ public final class StaticRulePlanResolver implements RulePlanResolver {
                         FactRequirement.COUNTERPARTY_VASP));
     }
 
+    /**
+     * 组装 withdrawal 订单的规则计划。
+     *
+     * @return withdrawal 规则计划
+     */
     private static RulePlan withdrawal() {
         return new RulePlan(
                 OrderType.WITHDRAWAL,
@@ -97,10 +112,22 @@ public final class StaticRulePlanResolver implements RulePlanResolver {
                         FactRequirement.COUNTERPARTY_VASP));
     }
 
+    /**
+     * 构造强制执行的规则项。
+     *
+     * @param ruleId 规则标识
+     * @return 强制规则项
+     */
     private static PlannedRule mandatory(RuleId ruleId) {
         return new PlannedRule(ruleId, true);
     }
 
+    /**
+     * 构造仅告警的规则项。
+     *
+     * @param ruleId 规则标识
+     * @return 告警规则项
+     */
     private static PlannedRule advisory(RuleId ruleId) {
         return new PlannedRule(ruleId, false);
     }
